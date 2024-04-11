@@ -1,0 +1,60 @@
+# Source: https://github.com/containers/skopeo/blob/main/docs/skopeo-sync.1.md
+ghcr.io:
+    images:
+        goauthentik/server:
+            - "latest"
+docker.io/library:
+#docker.MYDOMAIN.TLD/docker.io/library:
+    images:
+        registry:
+            - "latest"
+        nginx:
+            - "latest"
+        redis:
+            - "alpine"
+        traefik:
+            - "latest"
+#            - "3.0"
+#            - "2.11"
+            - "2.10"
+        debian:
+            - "latest"
+        ubuntu:
+            - "latest"
+        alpine:
+            - "latest"
+
+docker.io:
+#docker.MYDOMAIN.TLD/docker.io:
+    images:
+        # Bitnami
+        bitnami/minideb:
+            - "latest"
+
+        # Certbot
+        certbot/dns-cloudflare:
+            - "latest"
+
+        # Harbor
+        goharbor/redis-photon:
+            - "v2.10.2"
+        goharbor/trivy-adapter-photon:
+            - "v2.10.2"
+        goharbor/harbor-registryctl:
+            - "v2.10.2"
+        goharbor/registry-photon:
+            - "v2.10.2"
+        goharbor/nginx-photon:
+            - "v2.10.2"
+        goharbor/harbor-log:
+            - "v2.10.2"
+        goharbor/harbor-jobservice:
+            - "v2.10.2"
+        goharbor/harbor-core:
+            - "v2.10.2"
+        goharbor/harbor-portal:
+            - "v2.10.2"
+        goharbor/harbor-db:
+            - "v2.10.2"
+        goharbor/prepare:
+            - "v2.10.2"
