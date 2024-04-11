@@ -1,21 +1,27 @@
 #!/usr/bin/env python3
 
-# Import Libraries
+# Python Modules to interact with YAML Files
 import yaml
 from yaml.loader import SafeLoader
+
+# Python Module to Load .env Files and set Environment Parameters
+from dotenv import dotenv_values
+
+# Python Module to interact with Docker Registry
+from dxf import DXF
+
+
 
 # Useful Material
 # https://about.gitlab.com/blog/2020/11/18/docker-hub-rate-limit-monitoring/
 # https://gitlab.com/gitlab-da/unmaintained/check-docker-hub-limit/-/blob/main/check_docker_hub_limit.py?ref_type=heads
 
-def read_head():
-   
 
-def read_config():
+def read_config(filename = 'sync.d/main.yml'):
    # Declare List
    images = []
 
-   with open('sync.yml', 'r') as f:
+   with open(filename, 'r') as f:
    #    data = yaml.safe_load(f)
    #     data = list(yaml.load_all(f, Loader=SafeLoader))
       data = list(yaml.load_all(f, Loader=SafeLoader))
@@ -83,5 +89,21 @@ def read_config():
 
 # Main Method
 if __name__ == "__main__":
-   images = read_config()
+   # Load .env Environment Parameters
+   config = dotenv_values(".env")
+
+   # Load Synchronization Configuration
+   images = read_config('sync.d/sync.yml')
    print(images)
+
+   #def auth(dxf, response):
+   #   dxf.authenticate(config['DOCKERHUB_REGISTRY_USERNAME'], config['DOCKERHUB_REGISTRY_PASSWORD'], response=response)
+   #
+   #
+   #dxf = DXF(config['DOCKERHUB_REGISTRY_HOSTNAME'] , '', auth)
+   #digest = dxf.head_manifest_and_response('library/nginx:latest')
+   #print(digest)
+
+   #digest = dxf.get_digest(alias = 'nginx:latest' , platform = 'linux/amd64')
+   #print(digest)
+   
