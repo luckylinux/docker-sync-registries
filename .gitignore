@@ -170,3 +170,7 @@ conf.d/
 conf.d/*
 sync.d/
 sync.d/*
+
+# Ignore build folders
+build
+build/*
