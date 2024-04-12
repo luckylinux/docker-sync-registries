@@ -14,5 +14,15 @@ skopeo sync --scoped --src yaml --dest docker --dest-cert-dir "${DESTINATION_REG
 # For ARM Devices
 skopeo sync --scoped --src docker --dest docker --override-arch arm --override-variant v7 docker.io/library/debian:latest ${DESTINATION_REGISTRY_HOSTNAME}
 
+# Sync All Architectures
+skopeo sync --scoped --src docker --dest docker --all docker.io/library/alpine:latest ${DESTINATION_REGISTRY_HOSTNAME}
+
 # For temporary Images Transfer
 #skopeo sync --scoped --src yaml --dest docker --dest-cert-dir "${DESTINATION_REGISTRY_LETSENCRYPT_CERTIFICATES}" sync.yml ${DESTINATION_REGISTRY_HOSTNAME}
+
+# List all Images that have been uplodaded locally
+skopeo inspect --raw docker://${DESTINATION_REGISTRY_HOSTNAME}/library/alpine | jq
+
+
+# Or direct API call to registry ?
+#https://${DESTINATION_REGISTRY_HOSTNAME}/v2/docker.io/library/nginx/manifests/latest
