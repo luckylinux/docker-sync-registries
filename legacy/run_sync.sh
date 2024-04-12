@@ -11,5 +11,8 @@ source $toolpath/.env
 skopeo sync --scoped --src yaml --dest docker --dest-cert-dir "${DESTINATION_REGISTRY_LETSENCRYPT_CERTIFICATES}" sync.yml ${DESTINATION_REGISTRY_HOSTNAME}
 
 
+# For ARM Devices
+skopeo sync --scoped --src docker --dest docker --override-arch arm --override-variant v7 docker.io/library/debian:latest ${DESTINATION_REGISTRY_HOSTNAME}
+
 # For temporary Images Transfer
 #skopeo sync --scoped --src yaml --dest docker --dest-cert-dir "${DESTINATION_REGISTRY_LETSENCRYPT_CERTIFICATES}" sync.yml ${DESTINATION_REGISTRY_HOSTNAME}
