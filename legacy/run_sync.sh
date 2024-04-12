@@ -49,9 +49,12 @@ skopeo inspect --raw docker://${DESTINATION_REGISTRY_HOSTNAME}/library/alpine | 
 
 
 # This seems to work out of the box
-./build/regclient/bin/regctl manifest get --host ${DESTINATION_REGISTRY_HOSTNAME} alpine:latest --format '{{jsonPretty .}}'
-./build/regclient/bin/regctl manifest get --host ${DESTINATION_REGISTRY_HOSTNAME} alpine@sha256:5d0da60400afb021f2d8dbfec8b7d26457e77eb8825cba90eba84319133f0efe --format '{{jsonPretty .}}'
+./build/regclient/bin/regctl manifest get --host ${DESTINATION_REGISTRY_HOSTNAME} "alpine:latest" --format '{{jsonPretty .}}'
+./build/regclient/bin/regctl manifest get --host ${DESTINATION_REGISTRY_HOSTNAME} "alpine@sha256:5d0da60400afb021f2d8dbfec8b7d26457e77eb8825cba90eba84319133f0efe" --format '{{jsonPretty .}}'
 
 
-./build/regclient/bin/regctl manifest get --host ${DESTINATION_REGISTRY_HOSTNAME} alpine:latest --format '{{jsonPretty .}}'
-./build/regclient/bin/regctl manifest get --host ${DESTINATION_REGISTRY_HOSTNAME} alpine@sha256:5d0da60400afb021f2d8dbfec8b7d26457e77eb8825cba90eba84319133f0efe --format "{{printPretty .}}"
+./build/regclient/bin/regctl manifest get --host ${DESTINATION_REGISTRY_HOSTNAME} "alpine:latest" --format '{{jsonPretty .}}'
+./build/regclient/bin/regctl manifest get --host ${DESTINATION_REGISTRY_HOSTNAME} "alpine@sha256:5d0da60400afb021f2d8dbfec8b7d26457e77eb8825cba90eba84319133f0efe" --format "{{printPretty .}}"
+
+# Try to get only the head
+./build/regclient/bin/regctl manifest head --host "docker.io" "library/alpine:latest"
