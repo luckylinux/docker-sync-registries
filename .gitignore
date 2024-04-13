@@ -174,3 +174,8 @@ sync.d/*
 # Ignore build folders
 build
 build/*
+
+# Ignore symbolic links to regctl, regsync and regbot
+regctl
+regsync
+regbot

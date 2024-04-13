@@ -2,3 +2,5 @@ requests
 python-dotenv
 pyaml-env
 python-dxf
+pandas
+IPython
