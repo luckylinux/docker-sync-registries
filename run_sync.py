@@ -8,20 +8,33 @@ from yaml.loader import SafeLoader
 from dotenv import dotenv_values
 
 # Python Module to interact with Docker Registry
-from dxf import DXF
+#from dxf import DXF
 
+# Pandas
+import pandas as pd
 
+# OS Library
+import os
+
+# Glob Library
+import glob
+
+# Import IPython to Display
+from IPython.display import display
+
+# Subprocess Python Module
+from subprocess import Popen, PIPE, run
 
 # Useful Material
 # https://about.gitlab.com/blog/2020/11/18/docker-hub-rate-limit-monitoring/
 # https://gitlab.com/gitlab-da/unmaintained/check-docker-hub-limit/-/blob/main/check_docker_hub_limit.py?ref_type=heads
 
 
-def read_config(filename = 'sync.d/main.yml'):
+def read_config(filepath = 'sync.d/main.yml'):
    # Declare List
    images = []
 
-   with open(filename, 'r') as f:
+   with open(filepath, 'r') as f:
    #    data = yaml.safe_load(f)
    #     data = list(yaml.load_all(f, Loader=SafeLoader))
       data = list(yaml.load_all(f, Loader=SafeLoader))
@@ -34,7 +47,7 @@ def read_config(filename = 'sync.d/main.yml'):
 
       # Declare Dictionary for each Image as a Template
       #imageTemplate = dict(Repository = "" , Reference = "" , Name = "" , Tag = "" , Custom  = {'Value' : "" , 'Percent_Of_Rated' : ""})
-      imageTemplate = dict(Repository = "" , Reference = "" , Name = "" , Tag = "" , Short = "")
+      imageTemplate = dict(Registry = "" , Namespace = ""  , Repository = "" , ImageName = "" , Tag = "" , ShortArtifactReference = "" , FullyQualifiedArtifactReference = "")
 
       # Iterate over list
       for l in range(length):
@@ -70,13 +83,36 @@ def read_config(filename = 'sync.d/main.yml'):
 
                   #print(tag)
 
+                  # Try to exact namespace from registry
+                  contents = registry.split("/")
+                  if len(contents) > 1:
+                     # Registry was actually in the form example.com/namespace
+                     # Separate these two
+                     registry = contents[0]
+                     namespace = contents[1]
+                     imname = im
+                  else:
+                     # Registry was specified on its own
+                     # Try to determine namespace and image name alternatively
+                     contents = im.split("/")
+                     if len(contents) > 1:
+                        namespace = contents[0]
+                        imname = contents[1]
+                     else:
+                        # Couldn't find Namespace
+                        # Assume it was "library" (as in Docker Hub)
+                        namespace = "library"
+                        imname = im
+
                   # Affect Properties
-                  image["Repository"] =  registry
-                  image["Reference"] = registry
-                  image["Name"] = im
+                  image["Registry"] =  registry
+                  #image["Reference"] = registry
+                  image["Namespace"] = namespace
+                  image["Repository"] = "/".join([namespace , imname])
+                  image["ImageName"] = imname
                   image["Tag"] = tag
-                  image["Short"] = im + ":" + tag
-                  image["FullyQualifiedReference"] = registry + "/" + im + ":" + tag
+                  image["ShortArtifactReference"] = im + ":" + tag
+                  image["FullyQualifiedArtifactReference"] = registry + "/" + namespace + "/" + imname + ":" + tag
 
                   #print(image) # Works correctly
 
@@ -92,18 +128,133 @@ if __name__ == "__main__":
    # Load .env Environment Parameters
    config = dotenv_values(".env")
 
+   # Set Pandas DataFrame Display Properties
+   pd.options.display.max_columns = 99999
+   pd.options.display.max_rows = 99999
+   pd.options.display.width = 4000
+   # Initialize Images as a List
+   images = []
+
+   # Images Config Folder
+   imagesconfigdir = os.path.abspath("sync.d")
+
    # Load Synchronization Configuration
-   images = read_config('sync.d/sync.yml')
-   print(images)
+   for filepath in glob.glob(f"{imagesconfigdir}/**/*.yml", recursive=True):
+      # Build File Path from File Name
+      #filepath = os.path.join(imagesconfigdir , filename)
 
-   #def auth(dxf, response):
-   #   dxf.authenticate(config['DOCKERHUB_REGISTRY_USERNAME'], config['DOCKERHUB_REGISTRY_PASSWORD'], response=response)
-   #
-   #
-   #dxf = DXF(config['DOCKERHUB_REGISTRY_HOSTNAME'] , '', auth)
-   #digest = dxf.head_manifest_and_response('library/nginx:latest')
-   #print(digest)
+      # Get File Name from File Path
+      filename = os.path.basename(filepath)
 
-   #digest = dxf.get_digest(alias = 'nginx:latest' , platform = 'linux/amd64')
-   #print(digest)
+      #print(filename)
+      #print(filepath)
+
+      # Get Images defined in the Current File
+      current_images = read_config(filepath)
+
+      # Read File
+      images.extend(current_images)
+      #print(current_images)
+      #print(images)
+
+
+   # Create Dataframe and add all Images to it
+   df_images = pd.DataFrame.from_records(images)
+   display(df_images)
+   #display(df_images)
+   #display(images)
+   
+   # Define Manifest Digest Hashes
+   #manifestdigesthashsource = [""] * df_images.shape[0]
+   #manifestdigesthashdestination = [""] * df_images.shape[0]
+   #print(manifestdigesthashsource)
+   comparison = []
+   comparisonTemplate = dict(ShortArtifactReference = "" , Status = "" , Source = "" , SourceHash = "" , Destination = "" , DestinationHash = "")
+
+   # Define Images Hashes
+   
+
+   # Iterate Over All Images
+   for index, row in df_images.iterrows():
+      #print(row['Registry'], row['Namespace'])
+
+      # Fully Qualified Artifact Reference
+      sourcefullyqualifiedartifactreference = row["FullyQualifiedArtifactReference"]
+
+      # Query the Source Repository
+      command_source = ["./regctl" , "manifest" , "head" , sourcefullyqualifiedartifactreference]
+      #result_source = run(command_source, stdout=PIPE, stderr=PIPE, universal_newlines=True)
+      result_source = run(command_source, stdout=PIPE, stderr=PIPE, universal_newlines=True , text=True)
+      #text_source = result_source.stdout.splitlines(0)
+      text_source = result_source.stdout.rsplit("\n")
+      #text_source = result_source.stdout
+
+      # Query the Destination Repository
+      destinationfullyqualifiedartifactreference = config["DESTINATION_REGISTRY_HOSTNAME"] + "/" + sourcefullyqualifiedartifactreference
+      command_destination = ["./regctl" , "manifest" , "head" , destinationfullyqualifiedartifactreference]
+      #result_destination = run(command_destination, stdout=PIPE, stderr=PIPE, universal_newlines=True)
+      result_destination = run(command_destination, stdout=PIPE, stderr=PIPE, universal_newlines=True , text=True)
+      #text_destination = result_destination.stdout.splitlines(0)
+      text_destination = result_destination.stdout.rsplit("\n")
+      #text_destination = result_destination.stdout
+
+      # Current Comparison
+      currentcomparison = comparisonTemplate.copy()
+      currentcomparison["ShortArtifactReference"] = row["ShortArtifactReference"]
+
+      
+       
+      currentcomparison["Source"] = sourcefullyqualifiedartifactreference
+      currentcomparison["SourceHash"] = text_source[0]
+      currentcomparison["Destination"] = destinationfullyqualifiedartifactreference
+      currentcomparison["DestinationHash"] = text_destination[0]
+
+      if (result_source.returncode == 0) and (result_destination.returncode == 0):
+         if currentcomparison["SourceHash"] == currentcomparison["DestinationHash"]:
+            currentcomparison["Status"] = "OK"
+         else:
+            currentcomparison["Status"] = "SYNC_NEEDED"
+      else:
+         if result_source.returncode == 0:
+            currentcomparison["Status"] = "ERROR_RETRIEVING_MANIFEST_FROM_DESTINATION"
+         else:
+            if result_destination.returncode == 0:
+               currentcomparison["Status"] = "ERROR_RETRIEVING_MANIFEST_FROM_SOURCE"
+            else:
+               currentcomparison["Status"] = "ERROR_RETRIEVING_MANIFEST_FROM_BOTH"
+
+      #print(currentcomparison)
+
+      # Append to List
+      comparison.append(currentcomparison)
+
+   #print(comparison)
+
+   # Convert to Pandas DataFrame
+   df_comparison = pd.DataFrame.from_records(comparison)
+
+   # Print DataFrame
+   display(df_comparison)
+
+      #print(command_source)
+      #print(command_destination)
+
+      # Echo
+      #print(f"Image: {fullyqualifiedartifactreference}")
+      #print(f"Source hash: {result_source.stdout}")
+      #print(f"Destination has: {result_destination.stdout}")
+
+      #print(result.returncode, result.stdout, result.stderr)
+      #result = run(command, stdout=PIPE, stderr=PIPE, text=True)
+      #result = run(command, stdout=PIPE, stderr=PIPE, capture_output=True)
+      #def auth(dxf, response):
+      #   dxf.authenticate(config['DOCKERHUB_REGISTRY_USERNAME'], config['DOCKERHUB_REGISTRY_PASSWORD'], response=response)
+      #
+      #
+      #dxf = DXF(config['DOCKERHUB_REGISTRY_HOSTNAME'] , '', auth)
+      #digest = dxf.head_manifest_and_response('library/nginx:latest')
+      #print(digest)
+
+      #digest = dxf.get_digest(alias = 'nginx:latest' , platform = 'linux/amd64')
+      #print(digest)
    

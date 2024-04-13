@@ -58,3 +58,6 @@ skopeo inspect --raw docker://${DESTINATION_REGISTRY_HOSTNAME}/library/alpine | 
 
 # Try to get only the head
 ./build/regclient/bin/regctl manifest head --host "docker.io" "library/alpine:latest"
+
+
+./regctl manifest head --host "docker.io" "library/nginx:latest"
