@@ -1,0 +1,1 @@
+*/5 * * * * * * bash -c "timestamp=$(date +\"%Y%m%d-%H:%M:%S\"); echo \"Test at ${timestamp}\";"
