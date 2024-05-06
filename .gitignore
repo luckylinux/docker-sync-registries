@@ -179,3 +179,6 @@ build/*
 regctl
 regsync
 regbot
+
+# Ignore includes from containers-build-tools Library
+includes
