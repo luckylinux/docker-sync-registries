@@ -29,6 +29,14 @@ from subprocess import Popen, PIPE, run
 # https://about.gitlab.com/blog/2020/11/18/docker-hub-rate-limit-monitoring/
 # https://gitlab.com/gitlab-da/unmaintained/check-docker-hub-limit/-/blob/main/check_docker_hub_limit.py?ref_type=heads
 
+# Applications Commands
+# Default System Paths
+COMMAND_PODMAN = ["podman"]
+COMMAND_SKOPEO = ["skopeo"]
+COMMAND_REGCTL = ["regctl"]
+COMMAND_REGSYNC = ["regsync"]
+COMMAND_REGBOT = ["regbot"]
+COMMAND_CRANE = ["crane"]
 
 def read_config(filepath = 'sync.d/main.yml'):
    # Declare List
@@ -128,6 +136,37 @@ if __name__ == "__main__":
    # Load .env Environment Parameters
    config = dotenv_values(".env")
 
+   # Define Container Name in case of running APPs within a Container
+   containerName = config["LOCAL_APPS_CONTAINER_NAME"]
+
+   # Get Container Engine in case of running APPs within a Container
+   containerEngine = config["LOCAL_APPS_CONTAINER_ENGINE"]
+
+   # Define Command for each APP
+   if config['LOCAL_APPS_RUN_INSIDE_CONTAINER'] == "true":
+      # Run APPs from inside container
+      COMMAND_PODMAN = [containerEngine , "exec" , containerName , "podman"]
+      COMMAND_SKOPEO = [containerEngine , "exec" , containerName , "skopeo"]
+      COMMAND_REGCTL = [containerEngine , "exec" , containerName , "regctl"]
+      COMMAND_REGSYNC = [containerEngine , "exec" , containerName , "regsync"]
+      COMMAND_REGBOT = [containerEngine , "exec" , containerName , "regbot"]
+      COMMAND_CRANE = [containerEngine , "exec" , containerName , "crane"]
+   else:
+      # Run APPs locally on the HOST
+      # Use default PATHs if Custom ENV Path has not been set
+      if config["LOCAL_APPS_PODMAN_PATH"] != "":
+         COMMAND_PODMAN = [config["LOCAL_APPS_PODMAN_PATH"]]
+      if config["LOCAL_APPS_SKOPEO_PATH"] != "":
+         COMMAND_SKOPEO = [config["LOCAL_APPS_SKOPEO_PATH"]]
+      if config["LOCAL_APPS_REGCTL_PATH"] != "":
+         COMMAND_REGCTL = [config["LOCAL_APPS_REGCTL_PATH"]] 
+      if config["LOCAL_APPS_REGSYNC_PATH"] != "":
+         COMMAND_REGSYNC = [config["LOCAL_APPS_REGSYNC_PATH"]] 
+      if config["LOCAL_APPS_REGBOT_PATH"] != "":
+         COMMAND_REGBOT = [config["LOCAL_APPS_REGBOT_PATH"]] 
+      if config["LOCAL_APPS_CRANE_PATH"] != "":
+         COMMAND_CRANE = [config["LOCAL_APPS_CRANE_PATH"]] 
+
    # Set Pandas DataFrame Display Properties
    pd.options.display.max_columns = 99999
    pd.options.display.max_rows = 99999
@@ -182,7 +221,8 @@ if __name__ == "__main__":
       sourcefullyqualifiedartifactreference = row["FullyQualifiedArtifactReference"]
 
       # Query the Source Repository
-      command_source = ["./regctl" , "manifest" , "head" , sourcefullyqualifiedartifactreference]
+      command_source = COMMAND_REGCTL.copy()
+      command_source.extend(["manifest" , "head" , sourcefullyqualifiedartifactreference])
       #result_source = run(command_source, stdout=PIPE, stderr=PIPE, universal_newlines=True)
       result_source = run(command_source, stdout=PIPE, stderr=PIPE, universal_newlines=True , text=True)
       #text_source = result_source.stdout.splitlines(0)
@@ -191,7 +231,8 @@ if __name__ == "__main__":
 
       # Query the Destination Repository
       destinationfullyqualifiedartifactreference = config["DESTINATION_REGISTRY_HOSTNAME"] + "/" + sourcefullyqualifiedartifactreference
-      command_destination = ["./regctl" , "manifest" , "head" , destinationfullyqualifiedartifactreference]
+      command_destination = COMMAND_REGCTL.copy()
+      command_destination.extend(["manifest" , "head" , destinationfullyqualifiedartifactreference])
       #result_destination = run(command_destination, stdout=PIPE, stderr=PIPE, universal_newlines=True)
       result_destination = run(command_destination, stdout=PIPE, stderr=PIPE, universal_newlines=True , text=True)
       #text_destination = result_destination.stdout.splitlines(0)

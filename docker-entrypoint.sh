@@ -3,26 +3,13 @@
 # Change to app folder
 cd /opt/app
 
-# Execute Docker-Entrypoint
-echo "Launching docker-entrypoint.sh"
+# Start the main process and save its PID
+# Use exec to replace the shell script process with the main process
+exec /opt/app/app.sh &
+pid=$!
 
-# set timezone using environment
-ln -snf /usr/share/zoneinfo/"${TIMEZONE:-UTC}" /etc/localtime
+# Trap the SIGTERM signal and forward it to the main process
+trap 'kill -SIGTERM $pid; wait $pid' SIGTERM
 
-# Infinite loop to Troubleshoot
-echo "ENABLE_INFINITE_LOOP = ${ENABLE_INFINITE_LOOP}"
-
-if [[ -v ENABLE_INFINITE_LOOP ]]
-then
-   if [[ "${ENABLE_INFINITE_LOOP}" == "yes" ]]
-   then
-       echo "Starting Infinite Loop"
-       while true
-       do
-          sleep 5
-       done
-   fi
-fi
-
-# Launch App
-python -u ./app.py
+# Wait for the main process to complete
+wait $pidh

@@ -1,11 +1,10 @@
-FROM localhost/container-registry-tools:debian-latest
+FROM localhost/container-registry-tools:alpine-latest
 
-# Update Sources
-RUN apt-get update
+# Update Sources$
+RUN apk update
 
 # Install required Packages
-RUN apt-get install -y python3 python3-pip python3-venv
-RUN apt-get clean
+RUN apk add --no-cache python3 py3-pip
 
 # Define Application Path
 ARG APP_PATH="/opt/app"

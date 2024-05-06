@@ -182,3 +182,10 @@ regbot
 
 # Ignore includes from containers-build-tools Library
 includes
+
+# Ignore personal Folders
+containers
+containers/*
+
+regctl
+regctl/*
