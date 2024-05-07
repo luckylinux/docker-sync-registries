@@ -35,9 +35,60 @@ COMMAND_REGSYNC = ["regsync"]
 COMMAND_REGBOT = ["regbot"]
 COMMAND_CRANE = ["crane"]
 
+# List of CONFIG Keys / ENVIRONMENT VARIABLES that can be used to interface with this Application
+CONFIG_KEYS =  [
+               # Destination Registry Settings
+               "DESTINATION_REGISTRY_HOSTNAME" ,
+
+               # Where Skopeo/Podman should Store the AUTH File with Credentials
+               "REGISTRY_AUTH_FILE" ,
+
+               # Use Container to run Applications Locally ?
+               # Requires spinning up https://github.com/luckylinux/container-registry-tools
+               # Otherwire requires installing all of the Tools/Libraries (Regclient, Skopeo, ...)
+               # Must be set to "false" if running inside Container !
+               "LOCAL_APPS_RUN_INSIDE_CONTAINER" ,
+
+               # Settings for when running APPs inside Container
+               "LOCAL_APPS_CONTAINER_IMAGE" , 
+               "LOCAL_APPS_CONTAINER_NAME" , 
+               "LOCAL_APPS_CONTAINER_ENGINE" ,
+
+               # Settings for when running APPs Locally
+               "LOCAL_APPS_REGCTL_PATH" ,
+               "LOCAL_APPS_REGSYNC_PATH" , 
+               "LOCAL_APPS_REGBOT_PATH" ,
+               "LOCAL_APPS_CRANE_PATH" ,
+               "LOCAL_APPS_SKOPEO_PATH" , 
+               "LOCAL_APPS_PODMAN_PATH" ,
+
+               # Enable Infinite Loop to Troubleshoot
+               # Also needed if the Main Script/App doesn't have a looping itself, preventing the Container from Stopping
+               "ENABLE_INFINITE_LOOP" ,
+]
+
 # CONFIG containing ENV Variables
 CONFIG = dict()
 
+# CONFIG_PATH containing the PATH to the Registries & Images Definition
+CONFIG_PATH = ""
+
+
+# Remove Quotes
+def strip_quotes(text):
+   # Declare result variable
+   result = str(text)
+   
+   # Remove Single Quotes
+   result.replace("'" , "")
+
+   # Remove Double Quotes
+   result.replace('"' , '')
+
+   # Return Result
+   return result
+
+# Read Single Config File
 def read_images_config_single(filepath = 'sync.d/main.yml'):
    # Declare List
    images = []
@@ -119,11 +170,8 @@ def read_images_config_all():
    # Initialize Images as a List
    images = []
 
-   # Images Config Folder
-   imagesconfigdir = os.path.abspath("sync.d")
-
    # Load Synchronization Configuration
-   for filepath in glob.glob(f"{imagesconfigdir}/**/*.yml", recursive=True):
+   for filepath in glob.glob(f"{CONFIG_PATH}/**/*.yml", recursive=True):
       # Get File Name from File Path
       filename = os.path.basename(filepath)
 
@@ -136,19 +184,52 @@ def read_images_config_all():
    # Return Result
    return images
 
-# Setup APPs Commands
-def setup_apps_commands():
+# Configure App
+def configure_app():
+   # Need to be able to modify global Variables
+   global CONFIG_PATH , CONFIG
+
+   # Images Config Folder
+   if (os.environ.get("CONFIG_BASE_PATH") is None) and ("CONFIG_BASE_PATH" not in CONFIG):
+      # Default to build absolute Path based on Relative Path
+      CONFIG_PATH = os.path.abspath("sync.d")
+   else:
+      if os.environ.get("CONFIG_BASE_PATH") is not None:
+         # Prefer Environment Variable
+         CONFIG_PATH = os.environ.get("CONFIG_BASE_PATH")
+      else:
+         if "CONFIG_BASE_PATH" in CONFIG:
+            # Use Setting from .env File
+            CONFIG_PATH = CONFIG["CONFIG_BASE_PATH"]
+   
+   # Environment Variables Override .env File
+   # This is made so that compose.yml File can override .env File which is also used for local Development
+   for keyname in CONFIG_KEYS:
+      env_override_config(keyname)
+
+# Override Configuration
+def env_override_config(variablename):
+   # Need to be able to modify global Variables
+   global CONFIG
+
+   # Check if Environment Variable is set
+   if os.environ.get(variablename) is not None:
+      # If Environment Variable is set, store its value in CONFIG overriding any possible previous Value
+      CONFIG[variablename] = os.environ.get(variablename)
+
+# Setup External APPs Commands
+def setup_external_apps_commands():
    # Need to be able to modify global COMMAND_XXX Variables
    global COMMAND_PODMAN , COMMAND_SKOPEO , COMMAND_REGCTL , COMMAND_REGSYNC , COMMAND_REGBOT , COMMAND_CRANE
 
-   # Define Container Name in case of running APPs within a Container
-   containerName = CONFIG["LOCAL_APPS_CONTAINER_NAME"]
-
-   # Get Container Engine in case of running APPs within a Container
-   containerEngine = CONFIG["LOCAL_APPS_CONTAINER_ENGINE"]
-
    # Define Command for each APP
-   if CONFIG['LOCAL_APPS_RUN_INSIDE_CONTAINER'] == "true":
+   if CONFIG["LOCAL_APPS_RUN_INSIDE_CONTAINER"] == "true":
+       # Define Container Name in case of running APPs within a Container
+      containerName = CONFIG["LOCAL_APPS_CONTAINER_NAME"]
+
+      # Get Container Engine in case of running APPs within a Container
+      containerEngine = CONFIG["LOCAL_APPS_CONTAINER_ENGINE"]
+
       # Run APPs from inside container
       COMMAND_PODMAN = [containerEngine , "exec" , containerName , "podman"]
       COMMAND_SKOPEO = [containerEngine , "exec" , containerName , "skopeo"]
@@ -157,20 +238,30 @@ def setup_apps_commands():
       COMMAND_REGBOT = [containerEngine , "exec" , containerName , "regbot"]
       COMMAND_CRANE = [containerEngine , "exec" , containerName , "crane"]
    else:
-      # Run APPs locally on the HOST
-      # Use default PATHs if Custom ENV Path has not been set
-      if CONFIG["LOCAL_APPS_PODMAN_PATH"] != "":
-         COMMAND_PODMAN = [CONFIG["LOCAL_APPS_PODMAN_PATH"]]
-      if CONFIG["LOCAL_APPS_SKOPEO_PATH"] != "":
-         COMMAND_SKOPEO = [CONFIG["LOCAL_APPS_SKOPEO_PATH"]]
-      if CONFIG["LOCAL_APPS_REGCTL_PATH"] != "":
-         COMMAND_REGCTL = [CONFIG["LOCAL_APPS_REGCTL_PATH"]] 
-      if CONFIG["LOCAL_APPS_REGSYNC_PATH"] != "":
-         COMMAND_REGSYNC = [CONFIG["LOCAL_APPS_REGSYNC_PATH"]] 
-      if CONFIG["LOCAL_APPS_REGBOT_PATH"] != "":
-         COMMAND_REGBOT = [CONFIG["LOCAL_APPS_REGBOT_PATH"]] 
-      if CONFIG["LOCAL_APPS_CRANE_PATH"] != "":
-         COMMAND_CRANE = [CONFIG["LOCAL_APPS_CRANE_PATH"]] 
+      # Override default PATHs if Custom ENV has been set and Variable is not empty
+      if "LOCAL_APPS_PODMAN_PATH" in CONFIG:
+         if strip_quotes(CONFIG["LOCAL_APPS_PODMAN_PATH"]) != "":
+            COMMAND_PODMAN = [CONFIG["LOCAL_APPS_PODMAN_PATH"]]
+      
+      if "LOCAL_APPS_SKOPEO_PATH" in CONFIG:
+         if strip_quotes(CONFIG["LOCAL_APPS_SKOPEO_PATH"]) != "":
+            COMMAND_SKOPEO = [CONFIG["LOCAL_APPS_SKOPEO_PATH"]]
+      
+      if "LOCAL_APPS_REGCTL_PATH" in CONFIG:
+         if strip_quotes(CONFIG["LOCAL_APPS_REGCTL_PATH"]) != "":
+            COMMAND_REGCTL = [CONFIG["LOCAL_APPS_REGCTL_PATH"]] 
+      
+      if "LOCAL_APPS_REGSYNC_PATH" in CONFIG:
+         if strip_quotes(CONFIG["LOCAL_APPS_REGSYNC_PATH"]) != "":
+            COMMAND_REGSYNC = [CONFIG["LOCAL_APPS_REGSYNC_PATH"]] 
+      
+      if "LOCAL_APPS_REGBOT_PATH" in CONFIG:
+         if strip_quotes(CONFIG["LOCAL_APPS_REGBOT_PATH"]) != "":
+            COMMAND_REGBOT = [CONFIG["LOCAL_APPS_REGBOT_PATH"]] 
+      
+      if "LOCAL_APPS_CRANE_PATH" in CONFIG:
+         if strip_quotes(CONFIG["LOCAL_APPS_CRANE_PATH"]) != "":
+            COMMAND_CRANE = [CONFIG["LOCAL_APPS_CRANE_PATH"]] 
 
 # Scan Images Manifest Digest and Compare Source with Destination
 def scan_images_manifest_digest(images):
@@ -264,11 +355,19 @@ def sync_images_based_on_manifest_digest(df_comparison):
 
 # Main Method
 if __name__ == "__main__":
+   # Debug
+   # print(os.environ.get("PATH"))
+   # for name, value in os.environ.items():
+   #    print("{0}: {1}".format(name, value))
+
    # Load .env Environment Parameters
    CONFIG = dotenv_values(".env")
 
-   # Setup APPs Commands
-   setup_apps_commands()
+   # Configure APP PATHs
+   configure_app()
+
+   # Setup External APPs Commands
+   setup_external_apps_commands()
    
    # Set Pandas DataFrame Display Properties
    pd.options.display.max_columns = 99999

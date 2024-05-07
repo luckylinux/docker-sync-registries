@@ -1,1 +1,2 @@
-*/5 * * * * * * bash -c "timestamp=$(date +\"%Y%m%d-%H:%M:%S\"); echo \"Test at ${timestamp}\";"
+# https://github.com/aptible/supercronic/tree/master/cronexpr
+* * */6 * * * * bash -c "python -u /opt/app/sync.py"
