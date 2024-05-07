@@ -27,7 +27,7 @@ fi
 
 
 # Load the Environment Variables into THIS Script
-eval "$(shdotenv --env .env || echo \"exit $?\")"
+eval "$(shdotenv --env ${toolpath}/.env || echo \"exit $?\")"
 
 # Architecture to use
 TARGETPLATFORM=$(uname -m)
@@ -79,7 +79,7 @@ else
          git pull
       fi
 
-      cd build/regclient
+      cd build/regclient || exit
       make
       #./bin/regctl version
    else

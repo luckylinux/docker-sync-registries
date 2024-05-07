@@ -3,11 +3,11 @@
 # Source: https://stackoverflow.com/questions/73653045/how-to-make-a-head-request-to-docker-hub-api-to-get-the-manifest
 
 # Determine toolpath if not set already
-relativepath="./" # Define relative path to go from this script to the root level of the tool
+relativepath="../" # Define relative path to go from this script to the root level of the tool
 if [[ ! -v toolpath ]]; then scriptpath=$(cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd ); toolpath=$(realpath --canonicalize-missing $scriptpath/$relativepath); fi
 
-# Load configuration
-source $toolpath/.env
+# Load the Environment Variables into THIS Script
+eval "$(shdotenv --env ${toolpath}/.env || echo \"exit $?\")"
 
 
 
