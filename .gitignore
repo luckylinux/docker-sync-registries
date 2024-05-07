@@ -160,6 +160,9 @@ cython_debug/
 #.idea/
 
 
+# Ignore Environment Variables
+.env
+
 # Ignore secrets
 secrets.yml
 secrets.py
