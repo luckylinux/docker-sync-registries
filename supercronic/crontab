@@ -1,2 +1,2 @@
 # https://github.com/aptible/supercronic/tree/master/cronexpr
-* * */6 * * * * bash -c "python -u /opt/app/sync.py"
+0 0 */3 * * * * bash -c "python -u /opt/app/sync.py"
