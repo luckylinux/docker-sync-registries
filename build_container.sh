@@ -6,7 +6,7 @@ if [[ ! -v toolpath ]]; then scriptpath=$(cd "$( dirname "${BASH_SOURCE[0]}" )" 
 
 # Load Configuration
 libpath=$(readlink --canonicalize-missing "${toolpath}/includes")
-source ${libpath}/functions.sh
+source "${libpath}/functions.sh"
 
 
 
@@ -20,11 +20,13 @@ engine_exists "${engine}"
 if [[ $? -ne 0 ]]
 then
     # Error
-    echo "[CRITICAL] Neither Podman nor Docker could be found and/or the specified Engine <$engine> was not valid."
+    echo "[CRITICAL] Neither Podman nor Docker could be found and/or the specified Engine <${engine}> was not valid."
     echo "ABORTING !"
     exit 9
 fi
 
+# Load the Environment Variables into THIS Script
+eval "$(shdotenv --env ${toolpath}/.env || echo \"exit $?\")"
 
 # Run a Local Registry WITHOUT Persistent Data Storage
 run_local_registry "${engine}"
@@ -49,7 +51,7 @@ tag=$(date +%Y%m%d)
 
 # Select Platform
 # Not used for now
-platform="linux/amd64"
+#platform="linux/amd64"
 #platform="linux/arm64/v8"
 
 
@@ -77,7 +79,6 @@ do
 
     # For each image tag
     tagargs=()
-    images=""
     for imagetag in "${imagetags[@]}"
     do
        # Echo
@@ -89,14 +90,6 @@ do
        # Add Argument to tag this Image too when running Container Build Command
        tagargs+=("-t")
        tagargs+=("${imagetag}")
-
-       # Automatically Populate list of Images to be uploaded to Local Registry
-       #if [[ -z "${images}" ]]
-       #then
-       #    images="${imagetag}"
-       #else
-       #    images="${images},${imagetag}"
-       #fi
     done
 
     # Build Container Image

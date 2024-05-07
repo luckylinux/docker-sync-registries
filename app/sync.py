@@ -91,6 +91,11 @@ def read_images_config_single(filepath = 'sync.d/main.yml'):
                         namespace = "library"
                         imname = im
 
+                  # Debug
+                  #print(f"Processing Image: {imname}")
+                  #print(im)
+                  #print(tag)
+
                   # Affect Properties
                   image["Registry"] =  registry
                   image["Namespace"] = namespace
@@ -246,10 +251,10 @@ def sync_images_based_on_manifest_digest(df_comparison):
          
          if result_sync.returncode != 0:
             text_sync = result_sync.stderr.rsplit("\n")
-            print(f"[ERROR]\n{text_sync}")
+            print(f"[ERROR] {result_sync.stderr}")
          else:
             text_sync = result_sync.stdout.rsplit("\n")
-            print(text_sync)
+            #print(text_sync)
          
 
 # Main Method
