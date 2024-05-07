@@ -1,6 +1,6 @@
 FROM localhost/container-registry-tools:alpine-latest
 
-# Update Sources$
+# Update Sources
 RUN apk update
 
 # Install required Packages
