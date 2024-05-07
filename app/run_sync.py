@@ -7,9 +7,6 @@ from yaml.loader import SafeLoader
 # Python Module to Load .env Files and set Environment Parameters
 from dotenv import dotenv_values
 
-# Python Module to interact with Docker Registry
-#from dxf import DXF
-
 # Pandas
 import pandas as pd
 
@@ -38,23 +35,22 @@ COMMAND_REGSYNC = ["regsync"]
 COMMAND_REGBOT = ["regbot"]
 COMMAND_CRANE = ["crane"]
 
-def read_config_single(filepath = 'sync.d/main.yml'):
+# CONFIG containing ENV Variables
+CONFIG = dict()
+
+def read_images_config_single(filepath = 'sync.d/main.yml'):
    # Declare List
    images = []
 
    with open(filepath, 'r') as f:
-   #    data = yaml.safe_load(f)
-   #     data = list(yaml.load_all(f, Loader=SafeLoader))
+      # Open YAML File in Safe Mode
+      #data = yaml.safe_load(f)
       data = list(yaml.load_all(f, Loader=SafeLoader))
-
-      # Print the values as a dictionary
-      #print(data)
 
       # Length of list
       length = len(data)
 
       # Declare Dictionary for each Image as a Template
-      #imageTemplate = dict(Repository = "" , Reference = "" , Name = "" , Tag = "" , Custom  = {'Value' : "" , 'Percent_Of_Rated' : ""})
       imageTemplate = dict(Registry = "" , Namespace = ""  , Repository = "" , ImageName = "" , Tag = "" , ShortArtifactReference = "" , FullyQualifiedArtifactReference = "")
 
       # Iterate over list
@@ -62,24 +58,9 @@ def read_config_single(filepath = 'sync.d/main.yml'):
          # Get Data of the current Iteration
          currentdata = data[l]
 
-         # Number of elements in currentdata
-         #lcurrentdata = len(currentdata)
-         #print(currentdata)
-
-         # List registries
-         #registries = currentdata.items()
-
-         #print(type(currentdata))
-
-         #registries = currentdata["0"]
-
          # Iterate over currentdata
          for registry in currentdata:
-            #print(registry)
             currentimages = currentdata[registry]["images"]
-            #print(currentdata[registry])
-            #print(currentimages)
-            #print(registries)
             for im in currentimages:
                #print(im)
                tags = currentimages[im]
@@ -88,8 +69,6 @@ def read_config_single(filepath = 'sync.d/main.yml'):
                   # Start with the Template Dictionary
                   # Must use .copy() otherwise all images will point to the LAST image that has been processed !
                   image = imageTemplate.copy()
-
-                  #print(tag)
 
                   # Try to exact namespace from registry
                   contents = registry.split("/")
@@ -114,15 +93,12 @@ def read_config_single(filepath = 'sync.d/main.yml'):
 
                   # Affect Properties
                   image["Registry"] =  registry
-                  #image["Reference"] = registry
                   image["Namespace"] = namespace
                   image["Repository"] = "/".join([namespace , imname])
                   image["ImageName"] = imname
                   image["Tag"] = tag
                   image["ShortArtifactReference"] = im + ":" + tag
                   image["FullyQualifiedArtifactReference"] = registry + "/" + namespace + "/" + imname + ":" + tag
-
-                  #print(image) # Works correctly
 
                   # Append to the list
                   images.append(image)
@@ -131,7 +107,7 @@ def read_config_single(filepath = 'sync.d/main.yml'):
    return images
 
 # Read all Configuration Files
-def read_config_all():
+def read_images_config_all():
    # Initialize Images as a List
    images = []
 
@@ -140,36 +116,31 @@ def read_config_all():
 
    # Load Synchronization Configuration
    for filepath in glob.glob(f"{imagesconfigdir}/**/*.yml", recursive=True):
-      # Build File Path from File Name
-      #filepath = os.path.join(imagesconfigdir , filename)
-
       # Get File Name from File Path
       filename = os.path.basename(filepath)
 
-      #print(filename)
-      #print(filepath)
-
       # Get Images defined in the Current File
-      current_images = read_config(filepath)
+      current_images = read_images_config_single(filepath)
 
       # Read File
       images.extend(current_images)
-      #print(current_images)
-      #print(images)
 
    # Return Result
    return images
 
 # Setup APPs Commands
-def setup_apps_commands(config):
+def setup_apps_commands():
+   # Need to be able to modify global COMMAND_XXX Variables
+   global COMMAND_PODMAN , COMMAND_SKOPEO , COMMAND_REGCTL , COMMAND_REGSYNC , COMMAND_REGBOT , COMMAND_CRANE
+
    # Define Container Name in case of running APPs within a Container
-   containerName = config["LOCAL_APPS_CONTAINER_NAME"]
+   containerName = CONFIG["LOCAL_APPS_CONTAINER_NAME"]
 
    # Get Container Engine in case of running APPs within a Container
-   containerEngine = config["LOCAL_APPS_CONTAINER_ENGINE"]
+   containerEngine = CONFIG["LOCAL_APPS_CONTAINER_ENGINE"]
 
    # Define Command for each APP
-   if config['LOCAL_APPS_RUN_INSIDE_CONTAINER'] == "true":
+   if CONFIG['LOCAL_APPS_RUN_INSIDE_CONTAINER'] == "true":
       # Run APPs from inside container
       COMMAND_PODMAN = [containerEngine , "exec" , containerName , "podman"]
       COMMAND_SKOPEO = [containerEngine , "exec" , containerName , "skopeo"]
@@ -180,36 +151,34 @@ def setup_apps_commands(config):
    else:
       # Run APPs locally on the HOST
       # Use default PATHs if Custom ENV Path has not been set
-      if config["LOCAL_APPS_PODMAN_PATH"] != "":
-         COMMAND_PODMAN = [config["LOCAL_APPS_PODMAN_PATH"]]
-      if config["LOCAL_APPS_SKOPEO_PATH"] != "":
-         COMMAND_SKOPEO = [config["LOCAL_APPS_SKOPEO_PATH"]]
-      if config["LOCAL_APPS_REGCTL_PATH"] != "":
-         COMMAND_REGCTL = [config["LOCAL_APPS_REGCTL_PATH"]] 
-      if config["LOCAL_APPS_REGSYNC_PATH"] != "":
-         COMMAND_REGSYNC = [config["LOCAL_APPS_REGSYNC_PATH"]] 
-      if config["LOCAL_APPS_REGBOT_PATH"] != "":
-         COMMAND_REGBOT = [config["LOCAL_APPS_REGBOT_PATH"]] 
-      if config["LOCAL_APPS_CRANE_PATH"] != "":
-         COMMAND_CRANE = [config["LOCAL_APPS_CRANE_PATH"]] 
+      if CONFIG["LOCAL_APPS_PODMAN_PATH"] != "":
+         COMMAND_PODMAN = [CONFIG["LOCAL_APPS_PODMAN_PATH"]]
+      if CONFIG["LOCAL_APPS_SKOPEO_PATH"] != "":
+         COMMAND_SKOPEO = [CONFIG["LOCAL_APPS_SKOPEO_PATH"]]
+      if CONFIG["LOCAL_APPS_REGCTL_PATH"] != "":
+         COMMAND_REGCTL = [CONFIG["LOCAL_APPS_REGCTL_PATH"]] 
+      if CONFIG["LOCAL_APPS_REGSYNC_PATH"] != "":
+         COMMAND_REGSYNC = [CONFIG["LOCAL_APPS_REGSYNC_PATH"]] 
+      if CONFIG["LOCAL_APPS_REGBOT_PATH"] != "":
+         COMMAND_REGBOT = [CONFIG["LOCAL_APPS_REGBOT_PATH"]] 
+      if CONFIG["LOCAL_APPS_CRANE_PATH"] != "":
+         COMMAND_CRANE = [CONFIG["LOCAL_APPS_CRANE_PATH"]] 
 
-# Scan Configuration Files
-def scan_configuration(images):
+# Scan Images Manifest Digest and Compare Source with Destination
+def scan_images_manifest_digest(images):
    # Create Dataframe and add all Images to it
    df_images = pd.DataFrame.from_records(images)
+
+   # Display Images that have been Registered
    display(df_images)
-   #display(df_images)
-   #display(images)
-   
+
    # Define Manifest Digest Hashes
-   #manifestdigesthashsource = [""] * df_images.shape[0]
-   #manifestdigesthashdestination = [""] * df_images.shape[0]
-   #print(manifestdigesthashsource)
    comparison = []
    comparisonTemplate = dict(ShortArtifactReference = "" , Status = "" , Source = "" , SourceHash = "" , Destination = "" , DestinationHash = "")
 
    # Iterate Over All Images
    for index, row in df_images.iterrows():
+      # Debug
       #print(row['Registry'], row['Namespace'])
 
       # Fully Qualified Artifact Reference
@@ -218,21 +187,15 @@ def scan_configuration(images):
       # Query the Source Repository
       command_source = COMMAND_REGCTL.copy()
       command_source.extend(["manifest" , "head" , sourcefullyqualifiedartifactreference])
-      #result_source = run(command_source, stdout=PIPE, stderr=PIPE, universal_newlines=True)
       result_source = run(command_source, stdout=PIPE, stderr=PIPE, universal_newlines=True , text=True)
-      #text_source = result_source.stdout.splitlines(0)
       text_source = result_source.stdout.rsplit("\n")
-      #text_source = result_source.stdout
 
       # Query the Destination Repository
-      destinationfullyqualifiedartifactreference = config["DESTINATION_REGISTRY_HOSTNAME"] + "/" + sourcefullyqualifiedartifactreference
+      destinationfullyqualifiedartifactreference = CONFIG["DESTINATION_REGISTRY_HOSTNAME"] + "/" + sourcefullyqualifiedartifactreference
       command_destination = COMMAND_REGCTL.copy()
       command_destination.extend(["manifest" , "head" , destinationfullyqualifiedartifactreference])
-      #result_destination = run(command_destination, stdout=PIPE, stderr=PIPE, universal_newlines=True)
       result_destination = run(command_destination, stdout=PIPE, stderr=PIPE, universal_newlines=True , text=True)
-      #text_destination = result_destination.stdout.splitlines(0)
       text_destination = result_destination.stdout.rsplit("\n")
-      #text_destination = result_destination.stdout
 
       # Current Comparison
       currentcomparison = comparisonTemplate.copy()
@@ -256,18 +219,46 @@ def scan_configuration(images):
             else:
                currentcomparison["Status"] = "ERROR_RETRIEVING_MANIFEST_FROM_BOTH"
 
+      # Debug
       #print(currentcomparison)
 
       # Append to List
       comparison.append(currentcomparison)
 
+   # Return Result
+   return comparison
+
+# Synchronize Images based on Manifest Digest Comparison
+# This will synchronize ALL Architectures / Platforms
+def sync_images_based_on_manifest_digest(df_comparison):
+   # Iterate Over All Images
+   for index, row in df_comparison.iterrows():
+      if row["Status"] != "OK":
+         # Echo
+         print(f"[SYNC] Perform Synchronization for Image {row['Source']}")
+
+         # Perform Sync
+         # In --scoped mode, only the base Destination Domain must be used !
+         # This is equal to CONFIG["DESTINATION_REGISTRY_HOSTNAME"]
+         command_sync = COMMAND_SKOPEO.copy()
+         command_sync.extend(["sync" , "--scoped" , "--src" , "docker" , "--dest" , "docker" , "--all" , row["Source"] , CONFIG["DESTINATION_REGISTRY_HOSTNAME"]])
+         result_sync = run(command_sync, stdout=PIPE, stderr=PIPE, universal_newlines=True , text=True)
+         
+         if result_sync.returncode != 0:
+            text_sync = result_sync.stderr.rsplit("\n")
+            print(f"[ERROR]\n{text_sync}")
+         else:
+            text_sync = result_sync.stdout.rsplit("\n")
+            print(text_sync)
+         
+
 # Main Method
 if __name__ == "__main__":
    # Load .env Environment Parameters
-   config = dotenv_values(".env")
+   CONFIG = dotenv_values(".env")
 
    # Setup APPs Commands
-   setup_apps_commands(config)
+   setup_apps_commands()
    
    # Set Pandas DataFrame Display Properties
    pd.options.display.max_columns = 99999
@@ -275,47 +266,38 @@ if __name__ == "__main__":
    pd.options.display.width = 4000
    
    # Read All Configuration
-   images = read_all_config()
+   images = read_images_config_all()
    
-
-
-
-   # Define Images Hashes
-   
-
    # Scan Configuration Files
-   scan_configuration(images)
-
-
-   #print(comparison)
+   manifest_digest_comparison = scan_images_manifest_digest(images)
 
    # Convert to Pandas DataFrame
-   df_comparison = pd.DataFrame.from_records(comparison)
+   df_manifest_digest_comparison = pd.DataFrame.from_records(manifest_digest_comparison)
+
+   # Print Comparison
+   display(df_manifest_digest_comparison)
+
+   # Synchronize Images based on Manifest Digest Comparison
+   sync_images_based_on_manifest_digest(df_manifest_digest_comparison)
 
 
+   # Notes
+   # Get Manifest Digest (same for all Architectures / Platforms)
+   # regctl manifest head docker.MYDOMAIN.TLD/docker.io/library/nginx:latest
+   #
+   # Get All Information about a particular Image
+   # regctl manifest get docker.MYDOMAIN.TLD/docker.io/library/nginx:latest
+   #
+   # Get Digest for an Image of a particular Architecture / Platform
+   # regctl image digest --platform linux/arm64 docker.MYDOMAIN.TLD/docker.io/library/nginx:latest
+   # regctl manifest digest --platform linux/arm64 docker.MYDOMAIN.TLD/docker.io/library/nginx:latest
+   #
 
-   # Print DataFrame
-   display(df_comparison)
 
-      #print(command_source)
-      #print(command_destination)
+   # Legacy
+   #dxf = DXF(CONFIG['DOCKERHUB_REGISTRY_HOSTNAME'] , '', auth)
+   #digest = dxf.head_manifest_and_response('library/nginx:latest')
+   #print(digest)
 
-      # Echo
-      #print(f"Image: {fullyqualifiedartifactreference}")
-      #print(f"Source hash: {result_source.stdout}")
-      #print(f"Destination has: {result_destination.stdout}")
-
-      #print(result.returncode, result.stdout, result.stderr)
-      #result = run(command, stdout=PIPE, stderr=PIPE, text=True)
-      #result = run(command, stdout=PIPE, stderr=PIPE, capture_output=True)
-      #def auth(dxf, response):
-      #   dxf.authenticate(config['DOCKERHUB_REGISTRY_USERNAME'], config['DOCKERHUB_REGISTRY_PASSWORD'], response=response)
-      #
-      #
-      #dxf = DXF(config['DOCKERHUB_REGISTRY_HOSTNAME'] , '', auth)
-      #digest = dxf.head_manifest_and_response('library/nginx:latest')
-      #print(digest)
-
-      #digest = dxf.get_digest(alias = 'nginx:latest' , platform = 'linux/amd64')
-      #print(digest)
-   
+   #digest = dxf.get_digest(alias = 'nginx:latest' , platform = 'linux/amd64')
+   #print(digest)
