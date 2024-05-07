@@ -1,0 +1,30 @@
+version: "3.8"
+
+services:
+
+  docker-sync-registries:
+    #image: localhost:5000/local/"${LOCAL_APPS_CONTAINER_IMAGE}"
+    image: localhost:5000/local/docker-sync-registries:debian-latest
+    pull_policy: "missing"
+    #container_name: ${LOCAL_APPS_CONTAINER_NAME}
+    container_name: docker-sync-registries
+    env_file:
+      - .env
+    environment:
+      - "CONFIG_BASE_PATH=/etc/sync-registries.d"
+      - "LOCAL_APPS_RUN_INSIDE_CONTAINER=false"
+      - "ENABLE_INFINITE_LOOP=true"
+    volumes:
+      - ./regctl:/etc/regctl
+      - ./containers:/etc/containers
+      - ./supercronic:/etc/supercronic
+      - ./sync.d:/etc/sync-registries.d
+    restart: "unless-stopped"
+    # Needed to redirect log
+    privileged: true
+    networks:
+      - podman
+
+networks:
+  podman:
+    external: true
