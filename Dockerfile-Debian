@@ -4,8 +4,7 @@ FROM localhost/container-registry-tools:debian-latest
 RUN apt-get update
 
 # Install required Packages
-RUN apt-get install -y python3 python3-pip python3-venv
-RUN apt-get clean
+RUN apt-get install -y python3 python3-pip python3-venv && apt-get clean
 
 # Define Application Path
 ARG APP_PATH="/opt/app"
