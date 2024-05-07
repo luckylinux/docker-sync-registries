@@ -38,7 +38,7 @@ COMMAND_REGSYNC = ["regsync"]
 COMMAND_REGBOT = ["regbot"]
 COMMAND_CRANE = ["crane"]
 
-def read_config(filepath = 'sync.d/main.yml'):
+def read_config_single(filepath = 'sync.d/main.yml'):
    # Declare List
    images = []
 
@@ -130,12 +130,38 @@ def read_config(filepath = 'sync.d/main.yml'):
    # Return Result
    return images
 
+# Read all Configuration Files
+def read_config_all():
+   # Initialize Images as a List
+   images = []
 
-# Main Method
-if __name__ == "__main__":
-   # Load .env Environment Parameters
-   config = dotenv_values(".env")
+   # Images Config Folder
+   imagesconfigdir = os.path.abspath("sync.d")
 
+   # Load Synchronization Configuration
+   for filepath in glob.glob(f"{imagesconfigdir}/**/*.yml", recursive=True):
+      # Build File Path from File Name
+      #filepath = os.path.join(imagesconfigdir , filename)
+
+      # Get File Name from File Path
+      filename = os.path.basename(filepath)
+
+      #print(filename)
+      #print(filepath)
+
+      # Get Images defined in the Current File
+      current_images = read_config(filepath)
+
+      # Read File
+      images.extend(current_images)
+      #print(current_images)
+      #print(images)
+
+   # Return Result
+   return images
+
+# Setup APPs Commands
+def setup_apps_commands(config):
    # Define Container Name in case of running APPs within a Container
    containerName = config["LOCAL_APPS_CONTAINER_NAME"]
 
@@ -167,36 +193,8 @@ if __name__ == "__main__":
       if config["LOCAL_APPS_CRANE_PATH"] != "":
          COMMAND_CRANE = [config["LOCAL_APPS_CRANE_PATH"]] 
 
-   # Set Pandas DataFrame Display Properties
-   pd.options.display.max_columns = 99999
-   pd.options.display.max_rows = 99999
-   pd.options.display.width = 4000
-   # Initialize Images as a List
-   images = []
-
-   # Images Config Folder
-   imagesconfigdir = os.path.abspath("sync.d")
-
-   # Load Synchronization Configuration
-   for filepath in glob.glob(f"{imagesconfigdir}/**/*.yml", recursive=True):
-      # Build File Path from File Name
-      #filepath = os.path.join(imagesconfigdir , filename)
-
-      # Get File Name from File Path
-      filename = os.path.basename(filepath)
-
-      #print(filename)
-      #print(filepath)
-
-      # Get Images defined in the Current File
-      current_images = read_config(filepath)
-
-      # Read File
-      images.extend(current_images)
-      #print(current_images)
-      #print(images)
-
-
+# Scan Configuration Files
+def scan_configuration(images):
    # Create Dataframe and add all Images to it
    df_images = pd.DataFrame.from_records(images)
    display(df_images)
@@ -209,9 +207,6 @@ if __name__ == "__main__":
    #print(manifestdigesthashsource)
    comparison = []
    comparisonTemplate = dict(ShortArtifactReference = "" , Status = "" , Source = "" , SourceHash = "" , Destination = "" , DestinationHash = "")
-
-   # Define Images Hashes
-   
 
    # Iterate Over All Images
    for index, row in df_images.iterrows():
@@ -241,10 +236,7 @@ if __name__ == "__main__":
 
       # Current Comparison
       currentcomparison = comparisonTemplate.copy()
-      currentcomparison["ShortArtifactReference"] = row["ShortArtifactReference"]
-
-      
-       
+      currentcomparison["ShortArtifactReference"] = row["ShortArtifactReference"] 
       currentcomparison["Source"] = sourcefullyqualifiedartifactreference
       currentcomparison["SourceHash"] = text_source[0]
       currentcomparison["Destination"] = destinationfullyqualifiedartifactreference
@@ -269,10 +261,38 @@ if __name__ == "__main__":
       # Append to List
       comparison.append(currentcomparison)
 
+# Main Method
+if __name__ == "__main__":
+   # Load .env Environment Parameters
+   config = dotenv_values(".env")
+
+   # Setup APPs Commands
+   setup_apps_commands(config)
+   
+   # Set Pandas DataFrame Display Properties
+   pd.options.display.max_columns = 99999
+   pd.options.display.max_rows = 99999
+   pd.options.display.width = 4000
+   
+   # Read All Configuration
+   images = read_all_config()
+   
+
+
+
+   # Define Images Hashes
+   
+
+   # Scan Configuration Files
+   scan_configuration(images)
+
+
    #print(comparison)
 
    # Convert to Pandas DataFrame
    df_comparison = pd.DataFrame.from_records(comparison)
+
+
 
    # Print DataFrame
    display(df_comparison)

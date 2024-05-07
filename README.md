@@ -37,3 +37,27 @@ cp -r conf.d.example conf.d
 # Modify using your preferred Text Editor 
 nano conf.d/sync.yml
 ```
+
+# Login to the required Registries
+Login needs to be done manually and for each APP separately.
+
+Typically this includes running the following commands for the DESTINATION REGISTRY as well as ALL SOURCE REGISTRIES:
+- `skopeo login`
+- `regctl login`
+
+When using the APPs within a Container, the easiest is to Enter into the Container and execute these commands natively:
+```
+# Enter the Container Shell
+podman exec -it container-registry-tools /bin/bash
+```
+
+Then setup all the required logins:
+```
+# Setup Login for Docker Hub
+skopeo login docker.io
+regctl login docker.io
+
+# Setup Login for Destination Registry
+skopeo login docker.MYDOMAIN.TLD
+regctl login docker.MYDOMAIN.TLD
+```
