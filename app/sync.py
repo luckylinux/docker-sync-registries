@@ -62,7 +62,10 @@ def read_images_config_single(filepath = 'sync.d/main.yml'):
          for registry in currentdata:
             currentimages = currentdata[registry]["images"]
             for im in currentimages:
-               #print(im)
+               # Debug
+               # print(im)
+
+               # Get Tags associated with the current Image
                tags = currentimages[im]
 
                for tag in tags:
@@ -92,9 +95,9 @@ def read_images_config_single(filepath = 'sync.d/main.yml'):
                         imname = im
 
                   # Debug
-                  #print(f"Processing Image: {imname}")
-                  #print(im)
-                  #print(tag)
+                  # print(f"Processing Image: {imname}")
+                  # print(im)
+                  # print(tag)
 
                   # Affect Properties
                   image["Registry"] =  registry
@@ -175,7 +178,8 @@ def scan_images_manifest_digest(images):
    df_images = pd.DataFrame.from_records(images)
 
    # Display Images that have been Registered
-   display(df_images)
+   # Debug
+   # display(df_images)
 
    # Define Manifest Digest Hashes
    comparison = []
@@ -184,7 +188,7 @@ def scan_images_manifest_digest(images):
    # Iterate Over All Images
    for index, row in df_images.iterrows():
       # Debug
-      #print(row['Registry'], row['Namespace'])
+      # print(row['Registry'], row['Namespace'])
 
       # Fully Qualified Artifact Reference
       sourcefullyqualifiedartifactreference = row["FullyQualifiedArtifactReference"]
@@ -225,7 +229,7 @@ def scan_images_manifest_digest(images):
                currentcomparison["Status"] = "ERROR_RETRIEVING_MANIFEST_FROM_BOTH"
 
       # Debug
-      #print(currentcomparison)
+      # print(currentcomparison)
 
       # Append to List
       comparison.append(currentcomparison)
@@ -240,7 +244,7 @@ def sync_images_based_on_manifest_digest(df_comparison):
    for index, row in df_comparison.iterrows():
       if row["Status"] != "OK":
          # Echo
-         print(f"[SYNC] Perform Synchronization for Image {row['Source']}")
+         print(f"[SYNC_NEEDED] Perform Synchronization for Image {row['Source']}")
 
          # Perform Sync
          # In --scoped mode, only the base Destination Domain must be used !
@@ -254,6 +258,7 @@ def sync_images_based_on_manifest_digest(df_comparison):
             print(f"[ERROR] {result_sync.stderr}")
          else:
             text_sync = result_sync.stdout.rsplit("\n")
+            # Debug
             #print(text_sync)
          
 
@@ -280,7 +285,8 @@ if __name__ == "__main__":
    df_manifest_digest_comparison = pd.DataFrame.from_records(manifest_digest_comparison)
 
    # Print Comparison
-   display(df_manifest_digest_comparison)
+   # Debug
+   # display(df_manifest_digest_comparison)
 
    # Synchronize Images based on Manifest Digest Comparison
    sync_images_based_on_manifest_digest(df_manifest_digest_comparison)
