@@ -1,10 +1,11 @@
 FROM localhost/container-registry-tools:alpine-latest
 
 # Update Sources
-RUN apk update
-
 # Install required Packages
-RUN apk add --no-cache python3 py3-pip
+RUN --mount=type=cache,mode=0777,target=/var/cache/apk,sharing=locked \
+    --mount=type=cache,mode=0777,target=/var/lib/apk,sharing=locked \
+    apk update && \
+    apk add python3 py3-pip
 
 # Define Application Path
 ARG APP_PATH="/opt/app"
@@ -33,7 +34,8 @@ RUN source "${VENV_PATH}/bin/activate"
 #RUN sh -c ". /opt/venv/bin/activate"
 
 # Install required Packages
-RUN pip install --no-cache-dir -r "${APP_PATH}/requirements.txt"
+RUN --mount=type=cache,mode=0777,target=/var/lib/pip,sharing=locked \
+    pip install --cache-dir /var/lib/pip -r "${APP_PATH}/requirements.txt"
 
 # Set PATH Variable to Include Application
 ENV PATH="${APP_PATH}/bin:$PATH"
