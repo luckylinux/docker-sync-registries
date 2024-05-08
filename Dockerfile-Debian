@@ -35,7 +35,7 @@ ENV PATH="${VENV_PATH}/bin:$PATH"
 
 # Activate venv
 RUN source "${VENV_PATH}/bin/activate"
-#RUN sh -c ". /opt/venv/bin/activate"
+#RUN sh -c ". ${VENV_PATH}/bin/activate"
 
 # Install required Packages
 RUN --mount=type=cache,mode=0777,target=/var/lib/pip,sharing=locked \
