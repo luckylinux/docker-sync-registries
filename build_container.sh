@@ -35,9 +35,24 @@ run_local_registry "${engine}"
 name="docker-sync-registries"
 
 # Options
+opts=()
+
 # Use --no-cache when e.g. updating docker-entrypoint.sh and images don't get updated as they should
-opts=""
-#opts="--no-cache"
+#opts+=("--no-cache")
+
+# Podman 5.x with Pasta doesn't handle Networking Correctly
+# Force to use slirp4netns
+opts+=("--network=slirp4netns")
+
+# NOT WORKING
+#opts+=("--log-level=debug")
+#opts+=("--network=host")
+#opts+=("--dns=192.168.1.3")
+#opts+=("--network=pasta:--ipv4-only,--dns-forward,192.168.1.3,--dns,192.168.1.3,--dhcp-dns,--search,none")
+#opts+=("--network=pasta:--ipv4-only,--dns-forward,192.168.1.3,--dns,192.168.1.3,-a,192.168.8.26,-n,20,-g,192.168.1.1")
+#opts+=("--network=pasta:-a,192.168.8.26,-n,20,-g,192.168.1.1")
+#opts+=("--network=pasta:--ipv6-only,-t,2a06:4004:12c8:1::8:25/80")
+#opts+=("--network=pasta")
 
 # Base Image
 # "Alpine" or "Debian"
@@ -93,7 +108,7 @@ do
     done
 
     # Build Container Image
-    ${engine} build ${opts} -f ${buildfile} . ${tagargs[*]}
+    ${engine} build ${opts[*]} ${tagargs[*]} -f ${buildfile} .
 
     # For each Image Tag
     for imagetag in "${imagetags[@]}"
