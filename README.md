@@ -61,3 +61,15 @@ regctl login docker.io
 skopeo login docker.MYDOMAIN.TLD
 regctl login docker.MYDOMAIN.TLD
 ```
+
+# Troubleshooting
+List Repositories available in a Registry:
+```
+regctl repo ls docker.MYDOMAIN.TLD
+```
+
+List available Image Tags for a Particular Repository:
+```
+regctl tag ls docker.MYDOMAIN.TLD/docker.io/library/traefik
+```
+
