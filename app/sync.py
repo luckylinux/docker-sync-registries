@@ -246,8 +246,8 @@ def configure_app():
     set_default_config()
 
     # Debug
-    print("Final Application Configuration")
-    pprint.pprint(CONFIG)
+    # print("Final Application Configuration")
+    # pprint.pprint(CONFIG)
 
 
 # Override Configuration
@@ -277,10 +277,10 @@ def set_if_not_set(key: str,
         type_instance = type(default_value)
 
     # Debug
-    print(f"Convert Configuration Key {key} to Instance Type {type_instance}")
+    # print(f"Convert Configuration Key {key} to Instance Type {type_instance}")
 
     # Debug
-    print(f"Current Configuration Value set to {CONFIG.get(key)}")
+    # print(f"Current Configuration Value set to {CONFIG.get(key)}")
 
     # Set Variable if not Set
     if key not in CONFIG and default_value is not None:
@@ -292,7 +292,7 @@ def set_if_not_set(key: str,
             CONFIG[key] = type_instance(CONFIG[key])
 
     # Debug
-    print(f"New Configuration for Key {key} with Value {CONFIG[key]} of type {type(CONFIG[key])}")
+    # print(f"New Configuration for Key {key} with Value {CONFIG[key]} of type {type(CONFIG[key])}")
 
 
 # Set Default Configuration
