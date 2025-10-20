@@ -429,13 +429,15 @@ def scan_images_manifest_digest(images):
                     currentcomparison["Status"] = "ERROR_RETRIEVING_MANIFEST_FROM_BOTH"
 
         # Debug current Comparison
-        # print(currentcomparison)
+        if CONFIG["DEBUG_LEVEL"] > 3:
+            print(currentcomparison)
 
         # Append to List
         comparison.append(currentcomparison)
 
     # Debug Comparison
     if CONFIG["DEBUG_LEVEL"] > 3:
+        print("Overall Comparison:")
         print(comparison)
 
     # Return Result
@@ -519,7 +521,8 @@ if __name__ == "__main__":
 
     # Print Comparison
     # Debug
-    # display(df_manifest_digest_comparison)
+    if CONFIG["DEBUG_LEVEL"] > 3:
+        display(df_manifest_digest_comparison)
 
     # Synchronize Images based on Manifest Digest Comparison
     sync_images_based_on_manifest_digest(df_manifest_digest_comparison)
