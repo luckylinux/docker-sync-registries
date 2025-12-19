@@ -85,6 +85,9 @@ CONFIG_KEYS = [
                # Debug Settings
                "DEBUG_LEVEL",
                # "DEBUG_LIST_PARSED_CONFIG",
+
+               # SYNC INTERVAL
+               "SYNC_INTERVAL",
 ]
 
 
@@ -214,6 +217,9 @@ class SyncRegistries:
     def set_default_config(self):
         # Set Default DEBUG_LEVEL
         self.config.set_if_not_set(key="DEBUG_LEVEL", default_value=1)
+
+        # Set Default SYNC_INTERVAL
+        self.config.set_if_not_set(key="SYNC_INTERVAL", default_value=1800)
 
         # Set Pandas DataFrame Display Properties
         pd.options.display.max_columns = 99999
@@ -630,7 +636,7 @@ class SyncRegistries:
             # Compute delta Time since last Check
             deltaTimeLastCheck = int(datetime.now().timestamp()) - lastCheckTimestamp
 
-            if deltaTimeLastCheck > 1800:
+            if deltaTimeLastCheck > self.config.get("SYNC_INTERVAL"):
                 # Debug
                 if self.config.get("DEBUG_LEVEL") > 3:
                     print(f"Check if Image {sourcefullartifactreference} has an updated Image available")
@@ -684,7 +690,7 @@ class SyncRegistries:
             else:
                 # Debug
                 if self.config.get("DEBUG_LEVEL") > 3:
-                    print(f"Recent Check was only {deltaTimeLastCheck} Seconds ago: use Database Values for {sourcefullartifactreference}")
+                    print(f"Recent Check was only {deltaTimeLastCheck} Seconds (< {self.config.get('SYNC_INTERVAL')} Seconds) ago: use Database Values for {sourcefullartifactreference}")
 
                 # Get Data from Database
                 database_index = self.get_database_index(source_fully_qualified_artifact_reference=sourcefullartifactreference)
