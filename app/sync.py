@@ -481,8 +481,12 @@ class SyncRegistries:
                 database_values_to_use = database_values.copy()
 
                 # Update Images Information
+                self.images[index]["Status"] = database_values_to_use.get("Status")
                 self.images[index]["LastCheck"] = database_values_to_use.get("LastCheck")
                 self.images[index]["LastUpdate"] = database_values_to_use.get("LastUpdate")
+                self.images[index]["SourceHash"] = database_values_to_use.get("SourceHash")
+                self.images[index]["DestinationHash"] = database_values_to_use.get("DestinationHash")
+                self.images[index]["DestinationFullArtifactReference"] = database_values_to_use.get("DestinationFullArtifactReference")
 
     # Save Database
     def save_database(self) -> None:
@@ -722,6 +726,7 @@ class SyncRegistries:
             currentcomparison["DestinationFullArtifactReference"] = destinationfullartifactreference
             currentcomparison["DestinationHash"] = destinationHash
             currentcomparison["LastCheck"] = lastCheckTimestamp
+            # currentcomparison["LastUpdate"] = lastUpdateTimestamp
             currentcomparison["Status"] = syncStatus
 
             # Debug current Comparison
