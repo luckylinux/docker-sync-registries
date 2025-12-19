@@ -694,7 +694,7 @@ class SyncRegistries:
             else:
                 # Debug
                 if self.config.get("DEBUG_LEVEL") > 3:
-                    print(f"Recent Check was only {deltaTimeLastCheck} Seconds (< {self.config.get('SYNC_INTERVAL')} Seconds) ago: use Database Values for {sourcefullartifactreference}")
+                    print(f"[{index+1} / {len(images)}] Recent Check was only {deltaTimeLastCheck} Seconds (< {self.config.get('SYNC_INTERVAL')} Seconds) ago: use Database Values for {sourcefullartifactreference}")
 
                 # Get Data from Database
                 database_index = self.get_database_index(source_fully_qualified_artifact_reference=sourcefullartifactreference)
