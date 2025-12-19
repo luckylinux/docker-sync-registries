@@ -1,7 +1,5 @@
 version: "3.8"
-
 services:
-
   docker-sync-registries:
     #image: localhost:5000/local/"${LOCAL_APPS_CONTAINER_IMAGE}"
     image: localhost:5000/local/docker-sync-registries:debian-latest
@@ -16,10 +14,13 @@ services:
       - "ENABLE_INFINITE_LOOP=true"
       # - "DEBUG_LIST_PARSED_CONFIG=true"
     volumes:
-      - ./regctl:/etc/regctl
-      - ./containers:/etc/containers
-      - ./supercronic:/etc/supercronic
-      - ./sync.d:/etc/sync-registries.d
+      - ./regctl:/etc/regctl:rw,z
+      - ./containers:/etc/containers:rw,z
+      - ./supercronic:/etc/supercronic:ro,z
+      - ./sync.d:/etc/sync-registries.d:ro,z
+      - ./data:/var/lib/sync-registries:rw,z
+      # Testing latest Source Code Version
+      - ./app/sync.py:/opt/app/sync.py:ro,z
     restart: "unless-stopped"
     # Needed to redirect log
     privileged: true

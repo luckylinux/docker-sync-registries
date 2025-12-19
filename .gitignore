@@ -163,22 +163,26 @@ cython_debug/
 # Ignore Environment Variables
 .env
 
-# Ignore secrets
+# Ignore Secrets
 secrets.yml
 secrets.py
 secrets.sh
 
-# Ignore production configuration
+# Ignore production Configuration
 conf.d/
 conf.d/*
 sync.d/
 sync.d/*
 
-# Ignore build folders
+# Ignore build Folders
 build
 build/*
 
-# Ignore symbolic links to regctl, regsync and regbot
+# Ignore local data Folders
+data
+data/*
+
+# Ignore symbolic Links to regctl, regsync and regbot
 regctl
 regsync
 regbot

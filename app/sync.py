@@ -14,7 +14,7 @@ import pandas as pd
 import os
 
 # Pprint Library
-import pprint
+# import pprint
 
 # Glob Library
 import glob
@@ -28,6 +28,15 @@ from IPython.display import display
 # Subprocess Python Module
 # from subprocess import Popen, PIPE, run
 from subprocess import PIPE, run
+
+# Time Module
+# import time
+
+# Datetime Module
+from datetime import datetime
+
+# JSON Module
+import json
 
 # Useful Material
 # https://about.gitlab.com/blog/2020/11/18/docker-hub-rate-limit-monitoring/
@@ -78,15 +87,6 @@ CONFIG_KEYS = [
                # "DEBUG_LIST_PARSED_CONFIG",
 ]
 
-# Initialize CONFIG containing ENV Variables
-# CONFIG = dict()
-
-# Load .env Environment Parameters
-CONFIG = dotenv_values(".env")
-
-# CONFIG_PATH containing the PATH to the Registries & Images Definition
-CONFIG_PATH = ""
-
 
 # Remove Quotes
 def strip_quotes(text):
@@ -103,448 +103,713 @@ def strip_quotes(text):
     return result
 
 
-# Read Single Config File
-def read_images_config_single(filepath='sync.d/main.yml'):
-    # Declare List
-    images = []
+class ConfigurationManager:
+    # Class Constructor
+    def __init__(self,
+                 environment_file: str | None = None
+                 ) -> None:
 
-    with open(filepath, 'r') as f:
-        # Open YAML File in Safe Mode
-        # data = yaml.safe_load(f)
-        data = list(yaml.load_all(f, Loader=SafeLoader))
+        # Initialize Variable
+        self.CONFIG = dict()
 
-        # Length of list
-        length = len(data)
+        # Load Environment File
+        if environment_file is not None and os.path.exists(environment_file):
+            # Load .env Environment File if available
+            self.CONFIG.update(dotenv_values(".env"))
 
-        # Declare Dictionary for each Image as a Template
-        imageTemplate = dict(Registry="",
-                             Namespace="",
-                             Repository="",
-                             ImageName="",
-                             Tag="",
-                             ShortArtifactReference="",
-                             FullyQualifiedArtifactReference=""
-                             )
+        # Environment Variables Override .env File
+        # This is made so that compose.yml File can override .env File which is also used for local Development
+        for keyname in CONFIG_KEYS:
+            self.env_override_config(keyname)
 
-        # Iterate over list
-        for list_index in range(length):
-            # Get Data of the current Iteration
-            currentdata = data[list_index]
+    # Get Configuration Keys
+    def keys(self) -> list[str]:
+        return self.CONFIG.keys()
 
-            # Iterate over currentdata
-            for registry in currentdata:
-                currentimages = currentdata[registry]["images"]
-                for im in currentimages:
-                    # Debug
-                    if CONFIG["DEBUG_LEVEL"] > 3:
-                        print(f"[DEBUG] Processing Image {im} under Registry {registry}")
+    # Get Configuration Value
+    def get(self,
+            key: str,
+            default_value: Any | None = None
+            ) -> Any:
 
-                    # Get Tags associated with the current Image
-                    tags = currentimages[im]
+        return self.CONFIG.get(key, default_value)
 
-                    for tag in tags:
-                        # Start with the Template Dictionary
-                        # Must use .copy() otherwise all images will point to the LAST image that has been processed !
-                        image = imageTemplate.copy()
+    # Override Configuration
+    def env_override_config(self,
+                            key: str
+                            ):
 
-                        # Try to exact namespace from registry
-                        contents = registry.split("/")
-                        if len(contents) > 1:
-                            # Registry was actually in the form example.com/namespace
-                            # Separate these two
-                            if len(contents) > 2:
-                                registry = contents[0]
-                                namespace = "/".join(contents[1:None])
-                                imname = im
-                            else:
-                                registry = contents[0]
-                                namespace = contents[1]
-                                imname = im
-                        else:
-                            # Try to determine namespace and image name alternatively
-                            contents = im.split("/")
-                            if len(contents) > 1:
-                                if len(contents) > 2:
-                                    namespace = "/".join(contents[0:-1])
-                                    imname = contents[-1]
-                                else:
-                                    namespace = contents[0]
-                                    imname = contents[1]
-                            else:
-                                # Couldn't find Namespace
-                                # Assume it was "library" (as in Docker Hub)
-                                namespace = "library"
-                                imname = im
-
-                        # Debug
-                        if CONFIG["DEBUG_LEVEL"] > 3:
-                            print(f"[DEBUG] Processing Image {imname} with Tag {tag} from Registry {registry} with Namespace {namespace}")
-                        # print(f"Processing Image: {imname}")
-                        # print(im)
-                        # print(tag)
-
-                        # Affect Properties
-                        image["Registry"] = registry
-                        image["Namespace"] = namespace
-                        image["Repository"] = "/".join([namespace, imname])
-                        image["ImageName"] = imname
-                        image["Tag"] = tag
-                        image["ShortArtifactReference"] = im + ":" + tag
-                        image["FullyQualifiedArtifactReference"] = registry + "/" + namespace + "/" + imname + ":" + tag
-
-                        # Append to the list
-                        images.append(image)
-
-    # Return Result
-    return images
-
-
-# Read all Configuration Files
-def read_images_config_all():
-    # Initialize Images as a List
-    images = []
-
-    # Load Synchronization Configuration
-    for filepath in glob.glob(f"{CONFIG_PATH}/**/*.yml", recursive=True):
-        # Get File Name from File Path
-        # filename = os.path.basename(filepath)
-
-        # Get Images defined in the Current File
-        current_images = read_images_config_single(filepath)
-
-        # Read File
-        images.extend(current_images)
-
-    # Return Result
-    return images
-
-
-# Configure App
-def configure_app():
-    # Need to be able to modify global Variables
-    global CONFIG_PATH, CONFIG
-
-    # Images Config Folder
-    if (os.environ.get("CONFIG_BASE_PATH") is None) and ("CONFIG_BASE_PATH" not in CONFIG):
-        # Default to build absolute Path based on Relative Path
-        CONFIG_PATH = os.path.abspath("sync.d")
-    else:
-        if os.environ.get("CONFIG_BASE_PATH") is not None:
-            # Prefer Environment Variable
-            CONFIG_PATH = os.environ.get("CONFIG_BASE_PATH")
-        else:
-            if "CONFIG_BASE_PATH" in CONFIG:
-                # Use Setting from .env File
-                CONFIG_PATH = CONFIG["CONFIG_BASE_PATH"]
-
-    # Environment Variables Override .env File
-    # This is made so that compose.yml File can override .env File which is also used for local Development
-    for keyname in CONFIG_KEYS:
-        env_override_config(keyname)
-
-    # Set Default Configuration
-    set_default_config()
-
-    # Debug
-    # print("Final Application Configuration")
-    # pprint.pprint(CONFIG)
-
-
-# Override Configuration
-def env_override_config(key):
-    # Need to be able to modify global Variables
-    # global CONFIG
-
-    # Check if Environment Variable is set
-    if os.environ.get(key) is not None:
-        # If Environment Variable is set, store its value in CONFIG overriding any possible previous Value
-        set_if_not_set(key=key,
-                       default_value=os.environ.get(key)
-                       )
-
-
-# Set Variable if not Set
-def set_if_not_set(key: str,
-                   default_value: Any | None,
-                   type_instance: type[str | int | float] = None
-                   ) -> None:
-
-    # Need to be able to modify global Variables
-    # global CONFIG
-
-    if default_value is not None:
-        # Extract Type Information from Argment
-        type_instance = type(default_value)
-
-    # Debug
-    # print(f"Convert Configuration Key {key} to Instance Type {type_instance}")
-
-    # Debug
-    # print(f"Current Configuration Value set to {CONFIG.get(key)}")
+        # Check if Environment Variable is set
+        if os.environ.get(key) is not None:
+            # If Environment Variable is set, store its value in CONFIG overriding any possible previous Value
+            self.set_if_not_set(key=key,
+                                default_value=os.environ.get(key)
+                                )
 
     # Set Variable if not Set
-    if key not in CONFIG and default_value is not None:
-        # Set Default Value, ensuring that it is of the correct Type
-        CONFIG[key] = type_instance(default_value)
-    else:
-        if CONFIG[key] is not None:
-            # Make sure that the current Configuration is of the correct Type
-            CONFIG[key] = type_instance(CONFIG[key])
+    def set_if_not_set(self,
+                       key: str,
+                       default_value: Any | None,
+                       type_instance: type[str | int | float] = None
+                       ) -> None:
 
-    # Debug
-    # print(f"New Configuration for Key {key} with Value {CONFIG[key]} of type {type(CONFIG[key])}")
+        if default_value is not None:
+            # Extract Type Information from Argment
+            type_instance = type(default_value)
 
-
-# Set Default Configuration
-def set_default_config():
-    # Need to be able to modify global Variables
-    global CONFIG
-
-    # Set Default DEBUG_LEVEL
-    set_if_not_set(key="DEBUG_LEVEL", default_value=1)
-
-
-# Setup External APPs Commands
-def setup_external_apps_commands():
-    # Need to be able to modify global COMMAND_XXX Variables
-    global COMMAND_PODMAN, COMMAND_SKOPEO, COMMAND_REGCTL, COMMAND_REGSYNC, COMMAND_REGBOT, COMMAND_CRANE
-
-    # Define Command for each APP
-    if CONFIG["LOCAL_APPS_RUN_INSIDE_CONTAINER"] == "true":
-        # Define Container Name in case of running APPs within a Container
-        containerName = CONFIG["LOCAL_APPS_CONTAINER_NAME"]
-
-        # Get Container Engine in case of running APPs within a Container
-        containerEngine = CONFIG["LOCAL_APPS_CONTAINER_ENGINE"]
-
-        # Run APPs from inside container
-        COMMAND_PODMAN = [containerEngine, "exec", containerName, "podman"]
-        COMMAND_SKOPEO = [containerEngine, "exec", containerName, "skopeo"]
-        COMMAND_REGCTL = [containerEngine, "exec", containerName, "regctl"]
-        COMMAND_REGSYNC = [containerEngine, "exec", containerName, "regsync"]
-        COMMAND_REGBOT = [containerEngine, "exec", containerName, "regbot"]
-        COMMAND_CRANE = [containerEngine, "exec", containerName, "crane"]
-    else:
-        # Override default PATHs if Custom ENV has been set and Variable is not empty
-        if "LOCAL_APPS_PODMAN_PATH" in CONFIG:
-            if strip_quotes(CONFIG["LOCAL_APPS_PODMAN_PATH"]) != "":
-                COMMAND_PODMAN = [CONFIG["LOCAL_APPS_PODMAN_PATH"]]
-
-        if "LOCAL_APPS_SKOPEO_PATH" in CONFIG:
-            if strip_quotes(CONFIG["LOCAL_APPS_SKOPEO_PATH"]) != "":
-                COMMAND_SKOPEO = [CONFIG["LOCAL_APPS_SKOPEO_PATH"]]
-
-        if "LOCAL_APPS_REGCTL_PATH" in CONFIG:
-            if strip_quotes(CONFIG["LOCAL_APPS_REGCTL_PATH"]) != "":
-                COMMAND_REGCTL = [CONFIG["LOCAL_APPS_REGCTL_PATH"]]
-
-        if "LOCAL_APPS_REGSYNC_PATH" in CONFIG:
-            if strip_quotes(CONFIG["LOCAL_APPS_REGSYNC_PATH"]) != "":
-                COMMAND_REGSYNC = [CONFIG["LOCAL_APPS_REGSYNC_PATH"]]
-
-        if "LOCAL_APPS_REGBOT_PATH" in CONFIG:
-            if strip_quotes(CONFIG["LOCAL_APPS_REGBOT_PATH"]) != "":
-                COMMAND_REGBOT = [CONFIG["LOCAL_APPS_REGBOT_PATH"]]
-
-        if "LOCAL_APPS_CRANE_PATH" in CONFIG:
-            if strip_quotes(CONFIG["LOCAL_APPS_CRANE_PATH"]) != "":
-                COMMAND_CRANE = [CONFIG["LOCAL_APPS_CRANE_PATH"]]
-
-
-# Scan Images Manifest Digest and Compare Source with Destination
-def scan_images_manifest_digest(images):
-    # Create Dataframe and add all Images to it
-    df_images = pd.DataFrame.from_records(images)
-
-    # Display Images that have been Registered
-    # Debug
-    if CONFIG["DEBUG_LEVEL"] > 3:
-        display(df_images)
-
-    # Define Manifest Digest Hashes
-    comparison = []
-    comparisonTemplate = dict(ShortArtifactReference="",
-                              Status="",
-                              Source="",
-                              SourceHash="",
-                              Destination="",
-                              DestinationHash=""
-                              )
-
-    # Iterate Over All Images
-    for index, row in df_images.iterrows():
         # Debug
-        # print(row['Registry'], row['Namespace'])
+        # print(f"Convert Configuration Key {key} to Instance Type {type_instance}")
 
-        # Fully Qualified Artifact Reference
-        sourcefullyqualifiedartifactreference = row["FullyQualifiedArtifactReference"]
+        # Debug
+        # print(f"Current Configuration Value set to {self.CONFIG.get(key)}")
 
-        # Query the Source Repository
-        command_source = COMMAND_REGCTL.copy()
-        command_source.extend(["manifest", "head", sourcefullyqualifiedartifactreference])
-
-        result_source = run(command_source,
-                            stdout=PIPE,
-                            stderr=PIPE,
-                            universal_newlines=True,
-                            text=True
-                            )
-
-        text_source = result_source.stdout.rsplit("\n")
-
-        # Query the Destination Repository
-        destinationfullyqualifiedartifactreference = CONFIG["DESTINATION_REGISTRY_HOSTNAME"] + "/" + sourcefullyqualifiedartifactreference
-        command_destination = COMMAND_REGCTL.copy()
-        command_destination.extend(["manifest", "head", destinationfullyqualifiedartifactreference])
-
-        result_destination = run(command_destination,
-                                 stdout=PIPE,
-                                 stderr=PIPE,
-                                 universal_newlines=True,
-                                 text=True
-                                 )
-
-        text_destination = result_destination.stdout.rsplit("\n")
-
-        # Current Comparison
-        currentcomparison = comparisonTemplate.copy()
-        currentcomparison["ShortArtifactReference"] = row["ShortArtifactReference"]
-        currentcomparison["Source"] = sourcefullyqualifiedartifactreference
-        currentcomparison["SourceHash"] = text_source[0]
-        currentcomparison["Destination"] = destinationfullyqualifiedartifactreference
-        currentcomparison["DestinationHash"] = text_destination[0]
-
-        if (result_source.returncode == 0) and (result_destination.returncode == 0):
-            if currentcomparison["SourceHash"] == currentcomparison["DestinationHash"]:
-                currentcomparison["Status"] = "OK"
-            else:
-                currentcomparison["Status"] = "SYNC_NEEDED"
+        # Set Variable if not Set
+        if key not in self.CONFIG and default_value is not None:
+            # Set Default Value, ensuring that it is of the correct Type
+            self.CONFIG[key] = type_instance(default_value)
         else:
-            if result_source.returncode == 0:
-                currentcomparison["Status"] = "ERROR_RETRIEVING_MANIFEST_FROM_DESTINATION"
+            if self.CONFIG[key] is not None:
+                # Make sure that the current Configuration is of the correct Type
+                self.CONFIG[key] = type_instance(self.CONFIG[key])
+
+        # Debug
+        # print(f"New Configuration for Key {key} with Value {self.CONFIG[key]} of type {type(CONFIG[key])}")
+
+
+class SyncRegistries:
+    # Class Constructor
+    def __init__(self) -> None:
+        # Initialize Variables
+        self.config = ConfigurationManager()
+
+        # CONFIG_PATH containing the PATH to the Registries & Images Definition
+        self.CONFIG_PATH = None
+
+        # DATABASE_PATH containing the PATH to the Database of previous Runs
+        self.DATABASE_PATH = None
+
+        # Initialize Images as a List
+        self.images = []
+
+        # Initialize Database as a List
+        self.database = []
+
+        # Initialize Current as a List (previously manifest_digest List)
+        self.current = []
+
+        # Initialize Database fast Index as Dict
+        self.database_by_source_reference = dict()
+        self.database_by_destination_reference = dict()
+
+        # Set Default Configuration
+        self.set_default_config()
+
+        # Set Application Configuration
+        self.configure()
+
+        # Setup External Application Commands if required
+        self.setup_external_apps_commands()
+
+    # Set Default Configuration
+    def set_default_config(self):
+        # Set Default DEBUG_LEVEL
+        self.config.set_if_not_set(key="DEBUG_LEVEL", default_value=1)
+
+        # Set Pandas DataFrame Display Properties
+        pd.options.display.max_columns = 99999
+        pd.options.display.max_rows = 99999
+        pd.options.display.width = 4000
+
+    # Configure App
+    def configure(self):
+        # Images Config Folder
+        if (os.environ.get("CONFIG_BASE_PATH") is None) and ("CONFIG_BASE_PATH" not in self.config.keys()):
+            # Default to build absolute Path based on Relative Path
+            self.CONFIG_PATH = os.path.abspath("sync.d")
+        else:
+            if os.environ.get("CONFIG_BASE_PATH") is not None:
+                # Prefer Environment Variable
+                self.CONFIG_PATH = os.environ.get("CONFIG_BASE_PATH")
             else:
-                if result_destination.returncode == 0:
-                    currentcomparison["Status"] = "ERROR_RETRIEVING_MANIFEST_FROM_SOURCE"
-                else:
-                    currentcomparison["Status"] = "ERROR_RETRIEVING_MANIFEST_FROM_BOTH"
+                if "CONFIG_BASE_PATH" in self.config.keys():
+                    # Use Setting from .env File
+                    self.CONFIG_PATH = self.config.get("CONFIG_BASE_PATH")
 
-        # Debug current Comparison
-        if CONFIG["DEBUG_LEVEL"] > 3:
-            print(currentcomparison)
-
-        # Append to List
-        comparison.append(currentcomparison)
-
-    # Debug Comparison
-    if CONFIG["DEBUG_LEVEL"] > 3:
-        print("Overall Comparison:")
-        print(comparison)
-
-    # Return Result
-    return comparison
-
-
-# Synchronize Images based on Manifest Digest Comparison
-# This will synchronize ALL Architectures / Platforms
-def sync_images_based_on_manifest_digest(df_comparison):
-    # Iterate Over All Images
-    for index, row in df_comparison.iterrows():
-        if row["Status"] != "OK":
-            # Echo
-            print(f"[INFO] SYNC_NEEDED Perform Synchronization for Image {row['Source']}")
-
-            # Perform Sync
-            # In --scoped mode, only the base Destination Domain must be used !
-            # This is equal to CONFIG["DESTINATION_REGISTRY_HOSTNAME"]
-            command_sync = COMMAND_SKOPEO.copy()
-            command_sync.extend(
-                                 [
-                                    "sync",
-                                    "--scoped",
-                                    "--src",
-                                    "docker",
-                                    "--dest",
-                                    "docker",
-                                    "--all",
-                                    row["Source"],
-                                    CONFIG["DESTINATION_REGISTRY_HOSTNAME"]
-                                 ]
-                                 )
-            result_sync = run(command_sync,
-                              stdout=PIPE,
-                              stderr=PIPE,
-                              universal_newlines=True,
-                              text=True
-                              )
-
-            if result_sync.returncode != 0:
-                # text_sync = result_sync.stderr.rsplit("\n")
-                print(f"[ERROR] {result_sync.stderr}")
+        if (os.environ.get("DATABASE_BASE_PATH") is None) and ("DATABASE_BASE_PATH" not in self.config.keys()):
+            # Default to build absolute Path based on Relative Path
+            self.DATABASE_PATH = "/var/lib/sync-registries"
+        else:
+            if os.environ.get("DATABASE_BASE_PATH") is not None:
+                self.DATABASE_PATH = os.environ.get("DATABASE_BASE_PATH")
             else:
-                # Do nothing
-                pass
+                if "DATABASE_BASE_PATH" in self.config.keys():
+                    # Use Setting from .env File
+                    self.DATABASE_PATH = self.config.get("DATABASE_BASE_PATH")
 
-                # text_sync = result_sync.stdout.rsplit("\n")
+        # Set Default Configuration
+        self.set_default_config()
+
+        # Debug
+        # print("Final Application Configuration")
+        # pprint.pprint(CONFIG)
+
+    # Read Single Config File
+    def read_images_config_single(self,
+                                  filepath='sync.d/main.yml'
+                                  ) -> list[dict[str, Any]]:
+
+        # Declare List
+        images = []
+
+        if os.path.exists(filepath):
+            with open(filepath, "r", encoding="UTF-8") as f:
+                # Open YAML File in Safe Mode
+                # data = yaml.safe_load(f)
+                data = list(yaml.load_all(f, Loader=SafeLoader))
+
+                # Length of list
+                length = len(data)
+
+                # Declare Dictionary for each Image as a Template
+                imageTemplate = dict(Registry="",
+                                     Namespace="",
+                                     Repository="",
+                                     ImageName="",
+                                     Tag="",
+                                     SourceShortArtifactReference="",
+                                     SourceFullArtifactReference="",
+                                     LastCheck=0,
+                                     LastUpdate=0
+                                     )
+
+                # Iterate over list
+                for list_index in range(length):
+                    # Get Data of the current Iteration
+                    currentdata = data[list_index]
+
+                    # Iterate over currentdata
+                    for registry in currentdata:
+                        currentimages = currentdata[registry]["images"]
+                        for im in currentimages:
+                            # Debug
+                            if self.config.get("DEBUG_LEVEL") > 3:
+                                print(f"[DEBUG] Processing Image {im} under Registry {registry}")
+
+                            # Get Tags associated with the current Image
+                            tags = currentimages[im]
+
+                            for tag in tags:
+                                # Start with the Template Dictionary
+                                # Must use .copy() otherwise all images will point to the LAST image that has been processed !
+                                image = imageTemplate.copy()
+
+                                # Try to exact namespace from registry
+                                contents = registry.split("/")
+                                if len(contents) > 1:
+                                    # Registry was actually in the form example.com/namespace
+                                    # Separate these two
+                                    if len(contents) > 2:
+                                        registry = contents[0]
+                                        namespace = "/".join(contents[1:None])
+                                        imname = im
+                                    else:
+                                        registry = contents[0]
+                                        namespace = contents[1]
+                                        imname = im
+                                else:
+                                    # Try to determine namespace and image name alternatively
+                                    contents = im.split("/")
+                                    if len(contents) > 1:
+                                        if len(contents) > 2:
+                                            namespace = "/".join(contents[0:-1])
+                                            imname = contents[-1]
+                                        else:
+                                            namespace = contents[0]
+                                            imname = contents[1]
+                                    else:
+                                        # Couldn't find Namespace
+                                        # Assume it was "library" (as in Docker Hub)
+                                        namespace = "library"
+                                        imname = im
+
+                                # Debug
+                                if self.config.get("DEBUG_LEVEL") > 3:
+                                    print(f"[DEBUG] Processing Image {imname} with Tag {tag} from Registry {registry} with Namespace {namespace}")
+                                # print(f"Processing Image: {imname}")
+                                # print(im)
+                                # print(tag)
+
+                                # Affect Properties
+                                image["Registry"] = registry
+                                image["Namespace"] = namespace
+                                image["Repository"] = "/".join([namespace, imname])
+                                image["ImageName"] = imname
+                                image["Tag"] = tag
+                                image["SourceShortArtifactReference"] = im + ":" + tag
+                                image["SourceFullArtifactReference"] = registry + "/" + namespace + "/" + imname + ":" + tag
+
+                                # Append to the list
+                                images.append(image)
+
+                                # Also store in the Object
+                                self.images.append(image)
+        else:
+            print(f"ERROR: File {filepath} does NOT exist !")
+
+        # Return Result
+        return images
+
+    # Read all Configuration Files
+    def read_images_config_all(self) -> list[dict[str, Any]]:
+        # Initialize Images as List
+        images = []
+
+        # Load Synchronization Configuration
+        for filepath in glob.glob(f"{self.CONFIG_PATH}/**/*.yml", recursive=True):
+            # Get File Name from File Path
+            # filename = os.path.basename(filepath)
+
+            # Get Images defined in the Current File
+            current_images = self.read_images_config_single(filepath)
+
+            # Read File
+            images.extend(current_images)
+
+        # Return Result
+        return images
+
+    # Get Database Filepath
+    def get_database_filepath(self) -> str:
+        # Build Database Filepath
+        database_filepath = os.path.join(self.DATABASE_PATH, "db.json")
+
+        # Return Value
+        return database_filepath
+
+    # Load Database of Previous Runs
+    def load_database(self) -> list[dict[str, Any]]:
+        # Get Database Filepath
+        database_filepath = self.get_database_filepath()
+
+        # Define Fallback Values (empty List & String)
+        data = []
+        database_file_contents = "[]"
+
+        # Read Database File if it exists
+        if os.path.exists(database_filepath):
+            with open(database_filepath, "r", encoding="UTF-8") as database_file_handle:
+                database_file_contents = database_file_handle.read()
+
+        try:
+            # Evaluate JSON
+            data = json.loads(database_file_contents)
+        except Exception as e:
+            # Display Warning & Error Message
+            print(f"WARNING Loading Database File {database_filepath} failed")
+            print(e)
+
+        # Save Database into Object
+        self.database = data
+
+        # Initialize Fully Qualified References Dictionary
+        database_fullartifactreferences = dict()
+
+        # Build a faster way to find Items in Database
+        for index, item in enumerate(self.database):
+            # Debug
+            print(f"[{index+1} / {len(self.database)}] Processing Database Item {item['SourceFullArtifactReference']}")
+
+            # Get Fully Qualified Artifact Reference
+            fullArtifactReference = item.get("SourceFullArtifactReference")
+
+            # Store in Dictionary
+            database_fullartifactreferences[fullArtifactReference] = item
+            database_fullartifactreferences[fullArtifactReference]["Index"] = index
+
+        # Save Database Index in Object
+        self.database_by_source_reference = database_fullartifactreferences
+
+        # Debug
+        if self.config.get("DEBUG_LEVEL") > 3:
+            print("Set Database by Source Reference")
+            print(json.dumps(self.database_by_source_reference,
+                             sort_keys=False,
+                             indent=4
+                             )
+                  )
+
+        # Return Database
+        return data
+
+    # Update Images Information
+    def update_images_info(self) -> None:
+        # Debug
+        # if self.config.get("DEBUG_LEVEL") > 3:
+        #     print(f"Database by Source Reference")
+        #     print(json.dumps(self.database_by_source_reference,
+        #                      sort_keys=False,
+        #                      indent=4
+        #                      )
+        #           )
+           
+        # Process all Images
+        for index, item in enumerate(self.images):
+            # Debug
+            print(f"[{index+1} / {len(self.images)}] Processing Image Item {item['SourceFullArtifactReference']}")
+
+            # Get FullArtifactReference
+            fullArtifactReference = item.get("SourceFullArtifactReference")
+
+            # Store in Dictionary
+            # images_fullartifactreferences[fullArtifactReference] = item
+
+            # Get Data from Database
+            database_values = self.database_by_source_reference.get(fullArtifactReference)
+
+            # Debug
+            if self.config.get("DEBUG_LEVEL") > 5:
+                print(f"Database Values for {fullArtifactReference}:")
+                print(database_values)
+
+            if database_values is not None:
+                database_values_to_use = database_values.copy()
+
+                # Update Images Information
+                self.images[index]["LastCheck"] = database_values_to_use.get("LastCheck")
+                self.images[index]["LastUpdate"] = database_values_to_use.get("LastUpdate")
+
+    # Save Database
+    def save_database(self) -> None:
+        # Get Database Filepath
+        database_filepath = self.get_database_filepath()
+
+        # Get Data as String
+        database_file_contents = json.dumps(self.current)
+
+        # Save to File
+        with open(database_filepath, "w", encoding="UTF-8") as database_file_handle:
+            database_file_handle.write(database_file_contents)
+
+    # Run Synchronization
+    def run(self) -> None:
+        # Read All Configuration
+        self.read_images_config_all()
+
+        # Load Database Status
+        self.load_database()
+
+        # Update Images based on Database Information
+        self.update_images_info()
+
+        # Scan Configuration Files
+        self.current = self.scan_images_manifest_digest(self.images)
+
+        # Debug
+        # if self.config.get("DEBUG_LEVEL") > 3:
+        #     # Convert to Pandas DataFrame (only used for display Purposes)
+        #     df_manifest_digest_comparison = pd.DataFrame.from_records(self.current)
+        #
+        #     # Print Dataframe
+        #     display(df_manifest_digest_comparison)
+
+        # Synchronize Images based on Manifest Digest Comparison
+        self.sync_images_based_on_manifest_digest()
+
+        # Save Database Status
+        self.save_database()
+
+        # Notes
+        # Get Manifest Digest (same for all Architectures / Platforms)
+        # regctl manifest head docker.MYDOMAIN.TLD/docker.io/library/nginx:latest
+        #
+        # Get All Information about a particular Image
+        # regctl manifest get docker.MYDOMAIN.TLD/docker.io/library/nginx:latest
+        #
+        # Get Digest for an Image of a particular Architecture / Platform
+        # regctl image digest --platform linux/arm64 docker.MYDOMAIN.TLD/docker.io/library/nginx:latest
+        # regctl manifest digest --platform linux/arm64 docker.MYDOMAIN.TLD/docker.io/library/nginx:latest
+        #
+        # List all Tags for a given Image
+        # regctl tag ls docker.MYDOMAIN.TLD/docker.io/library/nginx
+
+        # Legacy
+        # dxf = DXF(CONFIG['DOCKERHUB_REGISTRY_HOSTNAME'] , '', auth)
+        # digest = dxf.head_manifest_and_response('library/nginx:latest')
+        # print(digest)
+
+        # digest = dxf.get_digest(alias = 'nginx:latest' , platform = 'linux/amd64')
+        # print(digest)
+
+    # Setup External APPs Commands
+    def setup_external_apps_commands(self):
+        # Need to be able to modify global COMMAND_XXX Variables
+        global COMMAND_PODMAN, COMMAND_SKOPEO, COMMAND_REGCTL, COMMAND_REGSYNC, COMMAND_REGBOT, COMMAND_CRANE
+
+        # Define Command for each APP
+        if self.config.get("LOCAL_APPS_RUN_INSIDE_CONTAINER") == "true":
+            # Define Container Name in case of running APPs within a Container
+            containerName = self.config.get("LOCAL_APPS_CONTAINER_NAME")
+
+            # Get Container Engine in case of running APPs within a Container
+            containerEngine = self.config.get("LOCAL_APPS_CONTAINER_ENGINE")
+
+            # Run APPs from inside container
+            COMMAND_PODMAN = [containerEngine, "exec", containerName, "podman"]
+            COMMAND_SKOPEO = [containerEngine, "exec", containerName, "skopeo"]
+            COMMAND_REGCTL = [containerEngine, "exec", containerName, "regctl"]
+            COMMAND_REGSYNC = [containerEngine, "exec", containerName, "regsync"]
+            COMMAND_REGBOT = [containerEngine, "exec", containerName, "regbot"]
+            COMMAND_CRANE = [containerEngine, "exec", containerName, "crane"]
+        else:
+            # Override default PATHs if Custom ENV has been set and Variable is not empty
+            if "LOCAL_APPS_PODMAN_PATH" in self.config.keys():
+                if strip_quotes(self.config.get("LOCAL_APPS_PODMAN_PATH")) != "":
+                    COMMAND_PODMAN = [self.config.get("LOCAL_APPS_PODMAN_PATH")]
+
+            if "LOCAL_APPS_SKOPEO_PATH" in self.config.keys():
+                if strip_quotes(self.config.get("LOCAL_APPS_SKOPEO_PATH")) != "":
+                    COMMAND_SKOPEO = [self.config.get("LOCAL_APPS_SKOPEO_PATH")]
+
+            if "LOCAL_APPS_REGCTL_PATH" in self.config.keys():
+                if strip_quotes(self.config.get("LOCAL_APPS_REGCTL_PATH")) != "":
+                    COMMAND_REGCTL = [self.config.get("LOCAL_APPS_REGCTL_PATH")]
+
+            if "LOCAL_APPS_REGSYNC_PATH" in self.config.keys():
+                if strip_quotes(self.config.get("LOCAL_APPS_REGSYNC_PATH")) != "":
+                    COMMAND_REGSYNC = [self.config.get("LOCAL_APPS_REGSYNC_PATH")]
+
+            if "LOCAL_APPS_REGBOT_PATH" in self.config.keys():
+                if strip_quotes(self.config.get("LOCAL_APPS_REGBOT_PATH")) != "":
+                    COMMAND_REGBOT = [self.config.get("LOCAL_APPS_REGBOT_PATH")]
+
+            if "LOCAL_APPS_CRANE_PATH" in self.config.keys():
+                if strip_quotes(self.config.get("LOCAL_APPS_CRANE_PATH")) != "":
+                    COMMAND_CRANE = [self.config.get("LOCAL_APPS_CRANE_PATH")]
+
+    # Scan Images Manifest Digest and Compare Source with Destination
+    def scan_images_manifest_digest(self,
+                                    images: list[dict[str, Any]]
+                                    ) -> list[dict[str, Any]]:
+
+        # Display Images that have been Registered
+        # Debug
+        if self.config.get("DEBUG_LEVEL") > 3:
+            print("Requested Images to be synchronized")
+
+            # Create Dataframe and add all Images to it
+            df_images = pd.DataFrame.from_records(images)
+
+            # Diplay Dataframe
+            display(df_images)
+
+        # Define Manifest Digest Hashes
+        comparison = []
+        comparisonTemplate = dict(SourceShortArtifactReference="",
+                                  Status="",
+                                  SourceFullArtifactReference="",
+                                  SourceHash="",
+                                  DestinationFullArtifactReference="",
+                                  DestinationHash="",
+                                  LastCheck=0,
+                                  LastUpdate=0
+                                  )
+
+        # Iterate Over All Images
+        # for index, row in df_images.iterrows():
+        for index, row in enumerate(images):
+            # Debug
+            # print(row['Registry'], row['Namespace'])
+
+            # Fully Qualified Artifact References
+            sourcefullartifactreference = row["SourceFullArtifactReference"]
+            destinationfullartifactreference = self.config.get("DESTINATION_REGISTRY_HOSTNAME") + "/" + sourcefullartifactreference
+
+            # Get Time since last Check
+            lastCheckTimestamp = row["LastCheck"]
+
+            # Compute delta Time since last Check
+            deltaTimeLastCheck = int(datetime.now().timestamp()) - lastCheckTimestamp
+
+            if deltaTimeLastCheck > 1800:
                 # Debug
-                # print(text_sync)
+                if self.config.get("DEBUG_LEVEL") > 3:
+                    print(f"Check if Image {sourcefullartifactreference} has an updated Image available")
+
+                # Query the Source Repository
+                command_source = COMMAND_REGCTL.copy()
+                command_source.extend(["manifest", "head", sourcefullartifactreference])
+
+                result_source = run(command_source,
+                                    stdout=PIPE,
+                                    stderr=PIPE,
+                                    universal_newlines=True,
+                                    text=True
+                                    )
+
+                text_source = result_source.stdout.rsplit("\n")
+
+                sourceHash = text_source[0]
+
+                # Query the Destination Repository
+                command_destination = COMMAND_REGCTL.copy()
+                command_destination.extend(["manifest", "head", destinationfullartifactreference])
+
+                result_destination = run(command_destination,
+                                         stdout=PIPE,
+                                         stderr=PIPE,
+                                         universal_newlines=True,
+                                         text=True
+                                         )
+
+                text_destination = result_destination.stdout.rsplit("\n")
+
+                destinationHash = text_destination[0]
+
+                # Set Time for LastCheck
+                lastCheckTimestamp = int(datetime.now().timestamp())
+
+                if (result_source.returncode == 0) and (result_destination.returncode == 0):
+                    if sourceHash == destinationHash:
+                        syncStatus = "OK"
+                    else:
+                        syncStatus = "SYNC_NEEDED"
+                else:
+                    if result_source.returncode == 0:
+                        syncStatus = "ERROR_RETRIEVING_MANIFEST_FROM_DESTINATION"
+                    else:
+                        if result_destination.returncode == 0:
+                            syncStatus = "ERROR_RETRIEVING_MANIFEST_FROM_SOURCE"
+                        else:
+                            syncStatus = "ERROR_RETRIEVING_MANIFEST_FROM_BOTH"
+            else:
+                # Debug
+                if self.config.get("DEBUG_LEVEL") > 3:
+                    print(f"Recent Check was only {deltaTimeLastCheck} Seconds ago: use Database Values for {sourcefullartifactreference}")
+
+                # Get Data from Database
+                database_index = self.get_database_index(source_fully_qualified_artifact_reference=sourcefullartifactreference)
+
+                if database_index is not None:
+                    # Get Database Item
+                    database_item = self.database[database_index]
+                else:
+                    # Default to empty Dictionary
+                    database_item = dict()
+
+                # Get Source Hash
+                sourceHash = database_item.get("SourceHash")
+
+                # Get Destination Hash
+                destinationHash = database_item.get("DestinationHash")
+
+                # Get Last Check Timestamp
+                lastCheckTimestamp = database_item.get("LastCheck")
+
+                # Copy Status from previous Run
+                syncStatus = database_item.get("Status")
+
+            # Current Comparison
+            currentcomparison = comparisonTemplate.copy()
+            currentcomparison["SourceShortArtifactReference"] = row["SourceShortArtifactReference"]
+            currentcomparison["SourceFullArtifactReference"] = sourcefullartifactreference
+            currentcomparison["SourceHash"] = sourceHash
+            currentcomparison["DestinationFullArtifactReference"] = destinationfullartifactreference
+            currentcomparison["DestinationHash"] = destinationHash
+            currentcomparison["LastCheck"] = lastCheckTimestamp
+            currentcomparison["Status"] = syncStatus
+
+            # Debug current Comparison
+            if self.config.get("DEBUG_LEVEL") > 5:
+                print(f"Debug Comparison for Item {sourcefullartifactreference}")
+                print(currentcomparison)
+
+            # Append to List
+            comparison.append(currentcomparison)
+
+        # Debug Comparison
+        if self.config.get("DEBUG_LEVEL") > 3:
+            # Create Dataframe and add all Images to it
+            df_comparison = pd.DataFrame.from_records(comparison)
+
+            # Display Comparison
+            print("Overall Comparison:")
+            print(df_comparison)
+
+        # Return Result
+        return comparison
+
+    # Get Database Index
+    def get_database_index(self,
+                           source_fully_qualified_artifact_reference: str | None = None,
+                           destination_fully_qualified_artifact_reference: str | None = None,
+                           ) -> int:
+
+        # Get Dict Item by Key
+        item = self.database_by_source_reference.get(source_fully_qualified_artifact_reference)
+
+        if item is not None:
+            # Return Index
+            return item["Index"]
+        else:
+            # Return None
+            return None
+
+    # Synchronize Images based on Manifest Digest Comparison
+    # This will synchronize ALL Architectures / Platforms
+    def sync_images_based_on_manifest_digest(self,
+                                             #df_comparison
+                                             ):
+
+        # Iterate Over All Images
+        # Move away from Dataframe df_comparison.iterrows():
+        for index, row in enumerate(self.current):
+            if row["Status"] != "OK":
+                # Echo
+                print(f"[INFO] SYNC_NEEDED Perform Synchronization for Image {row['SourceFullArtifactReference']}")
+
+                # Perform Sync
+                # In --scoped mode, only the base Destination Domain must be used !
+                # This is equal to CONFIG["DESTINATION_REGISTRY_HOSTNAME"]
+                command_sync = COMMAND_SKOPEO.copy()
+                command_sync.extend(
+                                    [
+                                        "sync",
+                                        "--scoped",
+                                        "--src",
+                                        "docker",
+                                        "--dest",
+                                        "docker",
+                                        "--all",
+                                        row["SourceFullArtifactReference"],
+                                        self.config.get("DESTINATION_REGISTRY_HOSTNAME")
+                                    ]
+                                    )
+                result_sync = run(command_sync,
+                                  stdout=PIPE,
+                                  stderr=PIPE,
+                                  universal_newlines=True,
+                                  text=True
+                                  )
+
+                if result_sync.returncode != 0:
+                    # text_sync = result_sync.stderr.rsplit("\n")
+                    print(f"[ERROR] {result_sync.stderr}")
+                else:
+                    # Set the LastUpdate Field to the current Timestamp
+                    # df_comparison.loc[index, 'LastUpdate'] = int(datetime.now().timestamp())
+
+                    # Set the LastUpdate Field to the current Timestamp
+                    self.current[index]["LastUpdate"] = int(datetime.now().timestamp())
+
+                    # text_sync = result_sync.stdout.rsplit("\n")
+                    # Debug
+                    # print(text_sync)
 
 
 # Main Method
 if __name__ == "__main__":
-    # Debug
-    # print(os.environ.get("PATH"))
-    # for name, value in os.environ.items():
-    #    print("{0}: {1}".format(name, value))
+    # Initialize Object
+    app = SyncRegistries()
 
-    # Load .env Environment Parameters
-    # CONFIG = dotenv_values(".env")
-
-    # Configure APP PATHs
-    configure_app()
-
-    # Setup External APPs Commands
-    setup_external_apps_commands()
-
-    # Set Pandas DataFrame Display Properties
-    pd.options.display.max_columns = 99999
-    pd.options.display.max_rows = 99999
-    pd.options.display.width = 4000
-
-    # Read All Configuration
-    images = read_images_config_all()
-
-    # Scan Configuration Files
-    manifest_digest_comparison = scan_images_manifest_digest(images)
-
-    # Convert to Pandas DataFrame
-    df_manifest_digest_comparison = pd.DataFrame.from_records(manifest_digest_comparison)
-
-    # Print Comparison
-    # Debug
-    if CONFIG["DEBUG_LEVEL"] > 3:
-        display(df_manifest_digest_comparison)
-
-    # Synchronize Images based on Manifest Digest Comparison
-    sync_images_based_on_manifest_digest(df_manifest_digest_comparison)
-
-    # Notes
-    # Get Manifest Digest (same for all Architectures / Platforms)
-    # regctl manifest head docker.MYDOMAIN.TLD/docker.io/library/nginx:latest
-    #
-    # Get All Information about a particular Image
-    # regctl manifest get docker.MYDOMAIN.TLD/docker.io/library/nginx:latest
-    #
-    # Get Digest for an Image of a particular Architecture / Platform
-    # regctl image digest --platform linux/arm64 docker.MYDOMAIN.TLD/docker.io/library/nginx:latest
-    # regctl manifest digest --platform linux/arm64 docker.MYDOMAIN.TLD/docker.io/library/nginx:latest
-    #
-    # List all Tags for a given Image
-    # regctl tag ls docker.MYDOMAIN.TLD/docker.io/library/nginx
-
-    # Legacy
-    # dxf = DXF(CONFIG['DOCKERHUB_REGISTRY_HOSTNAME'] , '', auth)
-    # digest = dxf.head_manifest_and_response('library/nginx:latest')
-    # print(digest)
-
-    # digest = dxf.get_digest(alias = 'nginx:latest' , platform = 'linux/amd64')
-    # print(digest)
+    # Run Synchronization
+    app.run()
