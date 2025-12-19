@@ -804,6 +804,9 @@ class SyncRegistries:
                     # Set the LastUpdate Field to the current Timestamp
                     # df_comparison.loc[index, 'LastUpdate'] = int(datetime.now().timestamp())
 
+                    # Set the Status to OK
+                    self.current[index]["Status"] = "OK"
+
                     # Set the LastUpdate Field to the current Timestamp
                     self.current[index]["LastUpdate"] = int(datetime.now().timestamp())
 
