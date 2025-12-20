@@ -42,6 +42,9 @@ import json
 # https://about.gitlab.com/blog/2020/11/18/docker-hub-rate-limit-monitoring/
 # https://gitlab.com/gitlab-da/unmaintained/check-docker-hub-limit/-/blob/main/check_docker_hub_limit.py?ref_type=heads
 
+# Lock File
+LOCK_FILE = "/var/run/sync-registries.lock"
+
 # Applications Commands
 # Default System Paths
 COMMAND_PODMAN = ["podman"]
@@ -365,6 +368,25 @@ class SyncRegistries:
         # Return Result
         return images
 
+    # Check Lock File
+    def is_lock_set(self) -> bool:
+        if os.path.exists(LOCK_FILE):
+            return True
+        else:
+            return False
+
+    # Set Lock File
+    def set_lock(self) -> None:
+        with open(LOCK_FILE, "w") as lock_handle:
+            # Generate Current Timestamp
+            timestamp = str(int(datetime.now().timestamp()))
+            lock_handle.write(timestamp)
+
+    # Clear Lock File
+    def clear_lock(self) -> None:
+        if os.path.exists(LOCK_FILE):
+            os.unlink(LOCK_FILE)
+
     # Read all Configuration Files
     def read_images_config_all(self) -> list[dict[str, Any]]:
         # Initialize Images as List
@@ -502,53 +524,62 @@ class SyncRegistries:
 
     # Run Synchronization
     def run(self) -> None:
-        # Read All Configuration
-        self.read_images_config_all()
+        # Check Lock File
+        # Only allow run if there is no Lock File set !
+        if self.is_lock_set() is False:
+            # Set Lock
+            self.set_lock()
 
-        # Load Database Status
-        self.load_database()
+            # Read All Configuration
+            self.read_images_config_all()
 
-        # Update Images based on Database Information
-        self.update_images_info()
+            # Load Database Status
+            self.load_database()
 
-        # Scan Configuration Files
-        self.current = self.scan_images_manifest_digest(self.images)
+            # Update Images based on Database Information
+            self.update_images_info()
 
-        # Debug
-        # if self.config.get("DEBUG_LEVEL") > 3:
-        #     # Convert to Pandas DataFrame (only used for display Purposes)
-        #     df_manifest_digest_comparison = pd.DataFrame.from_records(self.current)
-        #
-        #     # Print Dataframe
-        #     display(df_manifest_digest_comparison)
+            # Scan Configuration Files
+            self.current = self.scan_images_manifest_digest(self.images)
 
-        # Synchronize Images based on Manifest Digest Comparison
-        self.sync_images_based_on_manifest_digest()
+            # Debug
+            # if self.config.get("DEBUG_LEVEL") > 3:
+            #     # Convert to Pandas DataFrame (only used for display Purposes)
+            #     df_manifest_digest_comparison = pd.DataFrame.from_records(self.current)
+            #
+            #     # Print Dataframe
+            #     display(df_manifest_digest_comparison)
 
-        # Save Database Status
-        self.save_database()
+            # Synchronize Images based on Manifest Digest Comparison
+            self.sync_images_based_on_manifest_digest()
 
-        # Notes
-        # Get Manifest Digest (same for all Architectures / Platforms)
-        # regctl manifest head docker.MYDOMAIN.TLD/docker.io/library/nginx:latest
-        #
-        # Get All Information about a particular Image
-        # regctl manifest get docker.MYDOMAIN.TLD/docker.io/library/nginx:latest
-        #
-        # Get Digest for an Image of a particular Architecture / Platform
-        # regctl image digest --platform linux/arm64 docker.MYDOMAIN.TLD/docker.io/library/nginx:latest
-        # regctl manifest digest --platform linux/arm64 docker.MYDOMAIN.TLD/docker.io/library/nginx:latest
-        #
-        # List all Tags for a given Image
-        # regctl tag ls docker.MYDOMAIN.TLD/docker.io/library/nginx
+            # Save Database Status
+            self.save_database()
 
-        # Legacy
-        # dxf = DXF(CONFIG['DOCKERHUB_REGISTRY_HOSTNAME'] , '', auth)
-        # digest = dxf.head_manifest_and_response('library/nginx:latest')
-        # print(digest)
+            # Clear Lock
+            self.clear_lock()
 
-        # digest = dxf.get_digest(alias = 'nginx:latest' , platform = 'linux/amd64')
-        # print(digest)
+            # Notes
+            # Get Manifest Digest (same for all Architectures / Platforms)
+            # regctl manifest head docker.MYDOMAIN.TLD/docker.io/library/nginx:latest
+            #
+            # Get All Information about a particular Image
+            # regctl manifest get docker.MYDOMAIN.TLD/docker.io/library/nginx:latest
+            #
+            # Get Digest for an Image of a particular Architecture / Platform
+            # regctl image digest --platform linux/arm64 docker.MYDOMAIN.TLD/docker.io/library/nginx:latest
+            # regctl manifest digest --platform linux/arm64 docker.MYDOMAIN.TLD/docker.io/library/nginx:latest
+            #
+            # List all Tags for a given Image
+            # regctl tag ls docker.MYDOMAIN.TLD/docker.io/library/nginx
+
+            # Legacy
+            # dxf = DXF(CONFIG['DOCKERHUB_REGISTRY_HOSTNAME'] , '', auth)
+            # digest = dxf.head_manifest_and_response('library/nginx:latest')
+            # print(digest)
+
+            # digest = dxf.get_digest(alias = 'nginx:latest' , platform = 'linux/amd64')
+            # print(digest)
 
     # Setup External APPs Commands
     def setup_external_apps_commands(self):
@@ -767,9 +798,7 @@ class SyncRegistries:
 
     # Synchronize Images based on Manifest Digest Comparison
     # This will synchronize ALL Architectures / Platforms
-    def sync_images_based_on_manifest_digest(self,
-                                             #df_comparison
-                                             ):
+    def sync_images_based_on_manifest_digest(self):
 
         # Iterate Over All Images
         # Move away from Dataframe df_comparison.iterrows():
@@ -820,7 +849,7 @@ class SyncRegistries:
                     # print(text_sync)
 
 
-# Main Method
+# Main Method (execution as a Script)
 if __name__ == "__main__":
     # Initialize Object
     app = SyncRegistries()
