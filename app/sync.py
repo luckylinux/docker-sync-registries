@@ -592,7 +592,7 @@ class SyncRegistries:
             # regctl image digest --platform linux/arm64 docker.MYDOMAIN.TLD/docker.io/library/nginx:latest
             # regctl manifest digest --platform linux/arm64 docker.MYDOMAIN.TLD/docker.io/library/nginx:latest
             #
-            # Delete Image ()
+            # Delete Image (requires REGISTRY_STORAGE_DELETE_ENABLED=true)
             # regctl image delete --referrers docker.MYDOMAIN.TLD/docker.io/library/python@sha256:XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
             # Legacy
