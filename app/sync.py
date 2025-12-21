@@ -299,69 +299,72 @@ class SyncRegistries:
                     # Iterate over currentdata
                     for registry in currentdata:
                         currentimages = currentdata[registry]["images"]
-                        for im in currentimages:
-                            # Debug
-                            if self.config.get("DEBUG_LEVEL") > 3:
-                                print(f"[DEBUG] Processing Image {im} under Registry {registry}")
 
-                            # Get Tags associated with the current Image
-                            tags = currentimages[im]
-
-                            for tag in tags:
-                                # Start with the Template Dictionary
-                                # Must use .copy() otherwise all images will point to the LAST image that has been processed !
-                                image = imageTemplate.copy()
-
-                                # Try to exact namespace from registry
-                                contents = registry.split("/")
-                                if len(contents) > 1:
-                                    # Registry was actually in the form example.com/namespace
-                                    # Separate these two
-                                    if len(contents) > 2:
-                                        registry = contents[0]
-                                        namespace = "/".join(contents[1:None])
-                                        imname = im
-                                    else:
-                                        registry = contents[0]
-                                        namespace = contents[1]
-                                        imname = im
-                                else:
-                                    # Try to determine namespace and image name alternatively
-                                    contents = im.split("/")
-                                    if len(contents) > 1:
-                                        if len(contents) > 2:
-                                            namespace = "/".join(contents[0:-1])
-                                            imname = contents[-1]
-                                        else:
-                                            namespace = contents[0]
-                                            imname = contents[1]
-                                    else:
-                                        # Couldn't find Namespace
-                                        # Assume it was "library" (as in Docker Hub)
-                                        namespace = "library"
-                                        imname = im
-
+                        # If there are any Images defined
+                        if currentimages is not None:
+                            for im in currentimages:
                                 # Debug
                                 if self.config.get("DEBUG_LEVEL") > 3:
-                                    print(f"[DEBUG] Processing Image {imname} with Tag {tag} from Registry {registry} with Namespace {namespace}")
-                                # print(f"Processing Image: {imname}")
-                                # print(im)
-                                # print(tag)
+                                    print(f"[DEBUG] Processing Image {im} under Registry {registry}")
 
-                                # Affect Properties
-                                image["Registry"] = registry
-                                image["Namespace"] = namespace
-                                image["Repository"] = "/".join([namespace, imname])
-                                image["ImageName"] = imname
-                                image["Tag"] = tag
-                                image["SourceShortArtifactReference"] = im + ":" + tag
-                                image["SourceFullArtifactReference"] = registry + "/" + namespace + "/" + imname + ":" + tag
+                                # Get Tags associated with the current Image
+                                tags = currentimages[im]
 
-                                # Append to the list
-                                images.append(image)
+                                for tag in tags:
+                                    # Start with the Template Dictionary
+                                    # Must use .copy() otherwise all images will point to the LAST image that has been processed !
+                                    image = imageTemplate.copy()
 
-                                # Also store in the Object
-                                self.images.append(image)
+                                    # Try to exact namespace from registry
+                                    contents = registry.split("/")
+                                    if len(contents) > 1:
+                                        # Registry was actually in the form example.com/namespace
+                                        # Separate these two
+                                        if len(contents) > 2:
+                                            registry = contents[0]
+                                            namespace = "/".join(contents[1:None])
+                                            imname = im
+                                        else:
+                                            registry = contents[0]
+                                            namespace = contents[1]
+                                            imname = im
+                                    else:
+                                        # Try to determine namespace and image name alternatively
+                                        contents = im.split("/")
+                                        if len(contents) > 1:
+                                            if len(contents) > 2:
+                                                namespace = "/".join(contents[0:-1])
+                                                imname = contents[-1]
+                                            else:
+                                                namespace = contents[0]
+                                                imname = contents[1]
+                                        else:
+                                            # Couldn't find Namespace
+                                            # Assume it was "library" (as in Docker Hub)
+                                            namespace = "library"
+                                            imname = im
+
+                                    # Debug
+                                    if self.config.get("DEBUG_LEVEL") > 3:
+                                        print(f"[DEBUG] Processing Image {imname} with Tag {tag} from Registry {registry} with Namespace {namespace}")
+                                    # print(f"Processing Image: {imname}")
+                                    # print(im)
+                                    # print(tag)
+
+                                    # Affect Properties
+                                    image["Registry"] = registry
+                                    image["Namespace"] = namespace
+                                    image["Repository"] = "/".join([namespace, imname])
+                                    image["ImageName"] = imname
+                                    image["Tag"] = tag
+                                    image["SourceShortArtifactReference"] = im + ":" + tag
+                                    image["SourceFullArtifactReference"] = registry + "/" + namespace + "/" + imname + ":" + tag
+
+                                    # Append to the list
+                                    images.append(image)
+
+                                    # Also store in the Object
+                                    self.images.append(image)
         else:
             print(f"ERROR: File {filepath} does NOT exist !")
 
@@ -371,8 +374,13 @@ class SyncRegistries:
     # Check Lock File
     def is_lock_set(self) -> bool:
         if os.path.exists(LOCK_FILE):
+            # Display Warning
+            print(f"WARNING: LOCK File {LOCK_FILE} is set. Is another instance running ? Did the previous Run fail in a non-graceful Way ?§")
+
+            # Return Value
             return True
         else:
+            # Return Value
             return False
 
     # Set Lock File
