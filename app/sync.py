@@ -687,6 +687,19 @@ class SyncRegistries:
             # Compute delta Time since last Check
             deltaTimeLastCheck = int(datetime.now().timestamp()) - lastCheckTimestamp
 
+            # Get Data from Database
+            database_index = self.get_database_index(source_fully_qualified_artifact_reference=sourcefullartifactreference)
+
+            if database_index is not None:
+                # Get Database Item
+                database_item = self.database[database_index]
+            else:
+                # Default to empty Dictionary
+                database_item = dict()
+
+            # Get Last Update Timestamp
+            lastUpdateTimestamp = database_item.get("LastUpdate")
+
             if deltaTimeLastCheck > self.config.get("SYNC_INTERVAL"):
                 # Debug
                 if self.config.get("DEBUG_LEVEL") > 3:
@@ -743,16 +756,6 @@ class SyncRegistries:
                 if self.config.get("DEBUG_LEVEL") > 3:
                     print(f"[{index+1} / {len(images)}] Recent Check was only {deltaTimeLastCheck} Seconds (< {self.config.get('SYNC_INTERVAL')} Seconds) ago: use Database Values for {sourcefullartifactreference}")
 
-                # Get Data from Database
-                database_index = self.get_database_index(source_fully_qualified_artifact_reference=sourcefullartifactreference)
-
-                if database_index is not None:
-                    # Get Database Item
-                    database_item = self.database[database_index]
-                else:
-                    # Default to empty Dictionary
-                    database_item = dict()
-
                 # Get Source Hash
                 sourceHash = database_item.get("SourceHash")
 
@@ -773,7 +776,7 @@ class SyncRegistries:
             currentcomparison["DestinationFullArtifactReference"] = destinationfullartifactreference
             currentcomparison["DestinationHash"] = destinationHash
             currentcomparison["LastCheck"] = lastCheckTimestamp
-            # currentcomparison["LastUpdate"] = lastUpdateTimestamp
+            currentcomparison["LastUpdate"] = lastUpdateTimestamp
             currentcomparison["Status"] = syncStatus
 
             # Debug current Comparison
