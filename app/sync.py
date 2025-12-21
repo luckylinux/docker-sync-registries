@@ -690,7 +690,7 @@ class SyncRegistries:
             if deltaTimeLastCheck > self.config.get("SYNC_INTERVAL"):
                 # Debug
                 if self.config.get("DEBUG_LEVEL") > 3:
-                    print(f"Check if Image {sourcefullartifactreference} has an updated Image available")
+                    print(f"[{index+1} / {len(images)}] Check if Image {sourcefullartifactreference} has an updated Image available")
 
                 # Query the Source Repository
                 command_source = COMMAND_REGCTL.copy()
