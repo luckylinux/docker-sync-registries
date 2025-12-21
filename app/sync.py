@@ -576,6 +576,12 @@ class SyncRegistries:
             self.clear_lock()
 
             # Notes
+            # List all Repositories
+            # regctl repo ls docker.MYDOMAIN.TLD --limit 1000 --format='{{json .}}' --verbosity error
+            #
+            # # List all Tags for a given Repository
+            # regctl tag ls docker.MYDOMAIN.TLD/docker.io/library/nginx
+            #
             # Get Manifest Digest (same for all Architectures / Platforms)
             # regctl manifest head docker.MYDOMAIN.TLD/docker.io/library/nginx:latest
             #
@@ -586,8 +592,8 @@ class SyncRegistries:
             # regctl image digest --platform linux/arm64 docker.MYDOMAIN.TLD/docker.io/library/nginx:latest
             # regctl manifest digest --platform linux/arm64 docker.MYDOMAIN.TLD/docker.io/library/nginx:latest
             #
-            # List all Tags for a given Image
-            # regctl tag ls docker.MYDOMAIN.TLD/docker.io/library/nginx
+            # Delete Image ()
+            # regctl image delete --referrers docker.MYDOMAIN.TLD/docker.io/library/python@sha256:XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
             # Legacy
             # dxf = DXF(CONFIG['DOCKERHUB_REGISTRY_HOSTNAME'] , '', auth)
