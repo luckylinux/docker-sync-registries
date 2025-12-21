@@ -380,7 +380,7 @@ class SyncRegistries:
             # Return Value
             return True
         else:
-            # Return Value
+            # Return
             return False
 
     # Set Lock File
@@ -815,6 +815,17 @@ class SyncRegistries:
     # Synchronize Images based on Manifest Digest Comparison
     # This will synchronize ALL Architectures / Platforms
     def sync_images_based_on_manifest_digest(self):
+
+        # Debug
+        if self.config.get("DEBUG_LEVEL") > 3:
+            # Create Dataframe from current Data
+            df_debug = pd.DataFrame.from_records(self.current)
+
+            # Filter Dataframe            
+            df_filtered = df_debug[df_debug["Status"] != "OK"]
+
+            # Display List of Images to be synchronized
+            display(df_filtered)
 
         # Iterate Over All Images
         # Move away from Dataframe df_comparison.iterrows():
