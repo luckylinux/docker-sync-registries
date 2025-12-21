@@ -392,8 +392,16 @@ class SyncRegistries:
         # Initialize Images as List
         images = []
 
+        # Debug
+        if self.config.get("DEBUG_LEVEL") > 3:
+            print(f"[DEBUG] Load Configuration Files from {self.CONFIG_PATH}")
+
         # Load Synchronization Configuration
         for filepath in glob.glob(f"{self.CONFIG_PATH}/**/*.yml", recursive=True):
+            # Debug
+            if self.config.get("DEBUG_LEVEL") > 3:
+                print(f"[DEBUG] Read Configuration File {filepath}")
+
             # Get File Name from File Path
             # filename = os.path.basename(filepath)
 
@@ -544,7 +552,7 @@ class SyncRegistries:
 
             # Debug
             # if self.config.get("DEBUG_LEVEL") > 3:
-            #     # Convert to Pandas DataFrame (only used for display Purposes)
+            #/home/podman/containers/config/docker-sync-registries/application/sync-registries.d/main.yml     # Convert to Pandas DataFrame (only used for display Purposes)
             #     df_manifest_digest_comparison = pd.DataFrame.from_records(self.current)
             #
             #     # Print Dataframe
