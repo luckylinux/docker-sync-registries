@@ -1020,9 +1020,9 @@ class SyncRegistries:
         # Print Currently selected Artifacts
         print("Currently selected Artifacts")
         selected_artifacts = self.images_by_destination_reference.keys()
-        for selected_artifact in selected_artifacts:
+        for selected_artifact in sorted(selected_artifacts):
             print(f"\t- {selected_artifact}")
-            
+
         # Initialize Artifact Dict
         destination_artifacts = dict()
 
@@ -1060,12 +1060,10 @@ class SyncRegistries:
                 # Add to Dictionary
                 destination_artifacts[fully_qualified] = dict()
 
-        
-
         # Check which Artifact is NOT in the currently selected List
         print("These Images seem to be old and not desired anymore")
         
-        for destination_artifact in destination_artifacts:
+        for destination_artifact in sorted(destination_artifacts):
             if destination_artifact not in selected_artifacts:
                 print(f"\t- {destination_artifact}")
 
