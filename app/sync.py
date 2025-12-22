@@ -14,7 +14,7 @@ import pandas as pd
 import os
 
 # Pprint Library
-# import pprint
+import pprint
 
 # Glob Library
 import glob
@@ -27,7 +27,7 @@ from IPython.display import display
 
 # Subprocess Python Module
 # from subprocess import Popen, PIPE, run
-from subprocess import PIPE, run
+from subprocess import PIPE, run, CompletedProcess
 
 # Time Module
 # import time
@@ -203,9 +203,13 @@ class SyncRegistries:
         # Initialize Current as a List (previously manifest_digest List)
         self.current = []
 
+        # Initialize Images fast Index as Dict
+        self.images_by_source_reference = dict()
+        self.images_by_destination_reference = dict()
+
         # Initialize Database fast Index as Dict
         self.database_by_source_reference = dict()
-        self.database_by_destination_reference = dict()
+        # self.database_by_destination_reference = dict()
 
         # Set Default Configuration
         self.set_default_config()
@@ -302,10 +306,10 @@ class SyncRegistries:
 
                         # If there are any Images defined
                         if currentimages is not None:
-                            for im in currentimages:
+                            for index, im in enumerate(currentimages):
                                 # Debug
                                 if self.config.get("DEBUG_LEVEL") > 3:
-                                    print(f"[DEBUG] Processing Image {im} under Registry {registry}")
+                                    print(f"[DEBUG] [{index+1} / {len(currentimages)}] Processing Image {im} under Registry {registry}")
 
                                 # Get Tags associated with the current Image
                                 tags = currentimages[im]
@@ -344,27 +348,40 @@ class SyncRegistries:
                                             namespace = "library"
                                             imname = im
 
+                                    # Get Full Qualified Artifact Reference
+                                    fullArtifactReference = registry + "/" + namespace + "/" + imname + ":" + tag
+
                                     # Debug
                                     if self.config.get("DEBUG_LEVEL") > 3:
-                                        print(f"[DEBUG] Processing Image {imname} with Tag {tag} from Registry {registry} with Namespace {namespace}")
-                                    # print(f"Processing Image: {imname}")
-                                    # print(im)
-                                    # print(tag)
+                                        print(f"[DEBUG] Processing Image {fullArtifactReference}: Image {imname} with Tag {tag} from Registry {registry} with Namespace {namespace}")
 
-                                    # Affect Properties
-                                    image["Registry"] = registry
-                                    image["Namespace"] = namespace
-                                    image["Repository"] = "/".join([namespace, imname])
-                                    image["ImageName"] = imname
-                                    image["Tag"] = tag
-                                    image["SourceShortArtifactReference"] = im + ":" + tag
-                                    image["SourceFullArtifactReference"] = registry + "/" + namespace + "/" + imname + ":" + tag
+                                    if fullArtifactReference not in self.images_by_source_reference.keys():
+                                        # Affect Properties
+                                        image["Registry"] = registry
+                                        image["Namespace"] = namespace
+                                        image["Repository"] = "/".join([namespace, imname])
+                                        image["ImageName"] = imname
+                                        image["Tag"] = tag
+                                        image["SourceShortArtifactReference"] = im + ":" + tag
+                                        image["SourceFullArtifactReference"] = fullArtifactReference
 
-                                    # Append to the list
-                                    images.append(image)
+                                        # Append to the list
+                                        images.append(image)
 
-                                    # Also store in the Object
-                                    self.images.append(image)
+                                        # Store in Source Dictionary
+                                        self.images_by_source_reference[fullArtifactReference] = image
+                                        self.images_by_source_reference[fullArtifactReference]["Index"] = len(images) - 1
+
+                                        # Store in Destination Dictionary
+                                        destinationFullArtifactReference = self.config.get("DESTINATION_REGISTRY_HOSTNAME") + "/" + fullArtifactReference
+                                        self.images_by_destination_reference[destinationFullArtifactReference] = image
+                                        self.images_by_destination_reference[destinationFullArtifactReference]["Index"] = len(images) - 1
+
+                                        # Also store in the Object
+                                        self.images.append(image)
+                                    else:
+                                        # Display Warning
+                                        print(f"[WARNING] Image {fullArtifactReference} has already been processed. Ignoring duplicated Entry.")
         else:
             print(f"ERROR: File {filepath} does NOT exist !")
 
@@ -375,7 +392,7 @@ class SyncRegistries:
     def is_lock_set(self) -> bool:
         if os.path.exists(LOCK_FILE):
             # Display Warning
-            print(f"WARNING: LOCK File {LOCK_FILE} is set. Is another instance running ? Did the previous Run fail in a non-graceful Way ?§")
+            print(f"WARNING: LOCK File {LOCK_FILE} is set. Is another instance running ? Did the previous Run fail in a non-graceful Way ?")
 
             # Return Value
             return True
@@ -572,6 +589,9 @@ class SyncRegistries:
             # Save Database Status
             self.save_database()
 
+            # Find Old Images
+            self.find_old_images()
+
             # Clear Lock
             self.clear_lock()
 
@@ -649,6 +669,30 @@ class SyncRegistries:
                 if strip_quotes(self.config.get("LOCAL_APPS_CRANE_PATH")) != "":
                     COMMAND_CRANE = [self.config.get("LOCAL_APPS_CRANE_PATH")]
 
+    # Get Manifest Hash
+    def get_manifest_hash(self,
+                          full_artifact_reference: str
+                          ) -> (str, CompletedProcess, int):
+
+        command = COMMAND_REGCTL.copy()
+        command.extend(["manifest", "head", full_artifact_reference])
+
+        result = run(command,
+                     stdout=PIPE,
+                     stderr=PIPE,
+                     universal_newlines=True,
+                     text=True
+                     )
+
+        # Get Command Output
+        text = result.stdout.rsplit("\n")
+
+        # Get Manifest Hash (first Line)
+        hash_value = text[0]
+
+        # Return Result
+        return (hash_value, result, result.returncode)
+
     # Scan Images Manifest Digest and Compare Source with Destination
     def scan_images_manifest_digest(self,
                                     images: list[dict[str, Any]]
@@ -712,48 +756,24 @@ class SyncRegistries:
                     print(f"[{index+1} / {len(images)}] Check if Image {sourcefullartifactreference} has an updated Image available")
 
                 # Query the Source Repository
-                command_source = COMMAND_REGCTL.copy()
-                command_source.extend(["manifest", "head", sourcefullartifactreference])
-
-                result_source = run(command_source,
-                                    stdout=PIPE,
-                                    stderr=PIPE,
-                                    universal_newlines=True,
-                                    text=True
-                                    )
-
-                text_source = result_source.stdout.rsplit("\n")
-
-                sourceHash = text_source[0]
+                source_hash, source_result, source_retcode = self.get_manifest_hash(full_artifact_reference=sourcefullartifactreference)
 
                 # Query the Destination Repository
-                command_destination = COMMAND_REGCTL.copy()
-                command_destination.extend(["manifest", "head", destinationfullartifactreference])
-
-                result_destination = run(command_destination,
-                                         stdout=PIPE,
-                                         stderr=PIPE,
-                                         universal_newlines=True,
-                                         text=True
-                                         )
-
-                text_destination = result_destination.stdout.rsplit("\n")
-
-                destinationHash = text_destination[0]
+                destination_hash, destination_result, destination_retcode = self.get_manifest_hash(full_artifact_reference=destinationfullartifactreference)
 
                 # Set Time for LastCheck
                 lastCheckTimestamp = int(datetime.now().timestamp())
 
-                if (result_source.returncode == 0) and (result_destination.returncode == 0):
-                    if sourceHash == destinationHash:
+                if (source_retcode == 0) and (destination_retcode == 0):
+                    if source_hash == destination_hash:
                         syncStatus = "OK"
                     else:
                         syncStatus = "SYNC_NEEDED"
                 else:
-                    if result_source.returncode == 0:
+                    if source_retcode == 0:
                         syncStatus = "ERROR_RETRIEVING_MANIFEST_FROM_DESTINATION"
                     else:
-                        if result_destination.returncode == 0:
+                        if destination_retcode == 0:
                             syncStatus = "ERROR_RETRIEVING_MANIFEST_FROM_SOURCE"
                         else:
                             syncStatus = "ERROR_RETRIEVING_MANIFEST_FROM_BOTH"
@@ -763,10 +783,10 @@ class SyncRegistries:
                     print(f"[{index+1} / {len(images)}] Recent Check was only {deltaTimeLastCheck} Seconds (< {self.config.get('SYNC_INTERVAL')} Seconds) ago: use Database Values for {sourcefullartifactreference}")
 
                 # Get Source Hash
-                sourceHash = database_item.get("SourceHash")
+                source_hash = database_item.get("SourceHash")
 
                 # Get Destination Hash
-                destinationHash = database_item.get("DestinationHash")
+                destination_hash = database_item.get("DestinationHash")
 
                 # Get Last Check Timestamp
                 lastCheckTimestamp = database_item.get("LastCheck")
@@ -778,9 +798,9 @@ class SyncRegistries:
             currentcomparison = comparisonTemplate.copy()
             currentcomparison["SourceShortArtifactReference"] = row["SourceShortArtifactReference"]
             currentcomparison["SourceFullArtifactReference"] = sourcefullartifactreference
-            currentcomparison["SourceHash"] = sourceHash
+            currentcomparison["SourceHash"] = source_hash
             currentcomparison["DestinationFullArtifactReference"] = destinationfullartifactreference
-            currentcomparison["DestinationHash"] = destinationHash
+            currentcomparison["DestinationHash"] = destination_hash
             currentcomparison["LastCheck"] = lastCheckTimestamp
             currentcomparison["LastUpdate"] = lastUpdateTimestamp
             currentcomparison["Status"] = syncStatus
@@ -883,6 +903,171 @@ class SyncRegistries:
                     # text_sync = result_sync.stdout.rsplit("\n")
                     # Debug
                     # print(text_sync)
+
+    # Format Command
+    def format_command(self,
+                       *args
+                       ) -> list[str]:
+
+        # Initialize String
+        command = []
+
+        # Iterate over Arguments
+        for arg in args:
+            # print(f"Processing Argument: {arg}")
+            if isinstance(arg, list):
+                # print(f"A List: {arg}")
+                command.extend([str(subarg) for subarg in arg])
+                # for subarg in arg:
+                #     print(f"Processing Sub-Argument {subarg}")
+                #     print(f"Current Command: {command}")
+                #
+                #     if isinstance(subarg, list):
+                #         command.extend(str(self.format_command(subarg)))
+                #     else:
+                #         command.extend(str(self.format_command(subarg)))
+            else:
+                # print(f"Not a List: {arg}")
+                # print(f"Current Command: {command}")
+                command.append(str(arg))
+
+        # Debug
+        # print("Overall Command")
+        # pprint.pprint(command)
+        # print(f"Type: {type(command)}")
+        # print(f"Type[0]: {type(command[0])}")
+
+        # Return Value
+        return command
+
+    # Regctl Command
+    def regctl(self,
+               *args
+               ) -> CompletedProcess:
+
+        # Define Command
+        command = self.format_command(COMMAND_REGCTL.copy(), *args)
+
+        # Debug
+        # print(f"Command: {command}")
+
+        result = run(command,
+                     stdout=PIPE,
+                     stderr=PIPE,
+                     universal_newlines=True,
+                     text=True
+                     )
+
+        output = result.stdout
+
+        # Return
+        return result
+
+    # Get Repositories from a Registry
+    def get_repositories(self,
+                         registry: str,
+                         limit: int = 1000
+                         ) -> CompletedProcess:
+
+        # Perform Command
+        result = self.regctl("repo",
+                             "ls",
+                             registry,
+                             "--limit",
+                             limit,
+                             # Make sure **NOT** to add Quotes around the Format Parameter
+                             # Do **NOT** use "--format='{{json .}}'" as this will add a Literal single Quote at the Beginning and End of the Output !
+                             "--format={{json .}}"
+                             )
+
+        # Return Result
+        return result
+
+    # Get Tags from a given Repository
+    def get_tags(self,
+                 registry: str,
+                 repository: str,
+                 limit: int = 1000
+                 ) -> CompletedProcess:
+
+        # Perform Command
+        result = self.regctl("tag",
+                             "ls",
+                             f"{registry}/{repository}",
+                             "--limit",
+                             limit,
+                             # Make sure **NOT** to add Quotes around the Format Parameter
+                             # Do **NOT** use "--format='{{json .}}'" as this will add a Literal single Quote at the Beginning and End of the Output !
+                             "--format={{json .}}"
+                             )
+
+        # Return Result
+        return result
+
+    # Pretty JSON Print
+    def json_print(self,
+                   data: dict
+                   ) -> None:
+
+        print(json.dumps(data,
+                         sort_keys=False,
+                         indent=4
+                         )
+              )
+
+    # Find Old Images
+    def find_old_images(self) -> None:
+        # Print Currently selected Artifacts
+        print("Currently selected Artifacts")
+        selected_artifacts = self.images_by_destination_reference.keys()
+        for selected_artifact in selected_artifacts:
+            print(f"\t- {selected_artifact}")
+            
+        # Initialize Artifact Dict
+        destination_artifacts = dict()
+
+        # Get Destination Registry
+        destination_registry = self.config.get("DESTINATION_REGISTRY_HOSTNAME")
+
+        # Get all Repositories on the Destination Server
+        destination_repositories_result = self.get_repositories(registry=destination_registry)
+
+        # Get data from json
+        destination_repositories = json.loads(destination_repositories_result.stdout)["repositories"]
+
+        # Print Images
+        # self.json_print(destination_repositories)
+
+        # Loop over Repositories
+        for repo in destination_repositories:
+            # Get all Tags
+            repo_tags_result = self.get_tags(registry=destination_registry,
+                                             repository=repo
+                                             )
+
+            repo_tags = json.loads(repo_tags_result.stdout)["tags"]
+
+            # Print Tags
+            # self.json_print(repo_tags)
+
+            for repo_tag in repo_tags:
+                # Build Fully Qualified Artifact Name
+                fully_qualified = f"{destination_registry}/{repo}:{repo_tag}"
+
+                # Print
+                # print(fully_qualified)
+
+                # Add to Dictionary
+                destination_artifacts[fully_qualified] = dict()
+
+        
+
+        # Check which Artifact is NOT in the currently selected List
+        print("These Images seem to be old and not desired anymore")
+        
+        for destination_artifact in destination_artifacts:
+            if destination_artifact not in selected_artifacts:
+                print(f"\t- {destination_artifact}")
 
 
 # Main Method (execution as a Script)
