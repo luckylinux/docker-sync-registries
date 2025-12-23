@@ -1,7 +1,9 @@
 # https://github.com/aptible/supercronic/tree/master/cronexpr
 
+# **WARNING**: if 7 Time Slots are specified, the first is "Seconds" !
+
 # Run Daily at 00:00
-# 0 0 */1 * * * * bash -c "python -u /opt/app/sync.py"
+# 0 0 0 * * * * bash -c "python -u /opt/app/sync.py"
 
 # Run Hourly
-0 * * * * * * bash -c "python -u /opt/app/sync.py"
+0 0 * * * * * bash -c "python -u /opt/app/sync.py"
