@@ -872,9 +872,10 @@ class SyncRegistries:
         # Iterate Over All Images
         # Move away from Dataframe df_comparison.iterrows():
         for index, row in enumerate(self.current):
-            if row["Status"] != "OK":
+            syncStatus = row["Status"]
+            if syncStatus != "OK":
                 # Echo
-                print(f"[INFO] SYNC_NEEDED Perform Synchronization for Image {row['SourceFullArtifactReference']}")
+                print(f"[INFO] {syncStatus} Perform Synchronization for Image {row['SourceFullArtifactReference']}")
 
                 # Perform Sync
                 # In --scoped mode, only the base Destination Domain must be used !
