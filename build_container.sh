@@ -111,9 +111,9 @@ do
     ${engine} build ${opts[*]} ${tagargs[*]} -f ${buildfile} .
 
     # For each Image Tag
-    for imagetag in "${imagetags[@]}"
-    do
-        # Tag & Upload to local Registry
-        upload_to_local_registry "${imagetag}" "${engine}"
-    done
+    # for imagetag in "${imagetags[@]}"
+    # do
+    #     # Tag & Upload to local Registry
+    #     upload_to_local_registry "${imagetag}" "${engine}"
+    # done
 done
