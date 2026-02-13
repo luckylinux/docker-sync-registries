@@ -8,8 +8,11 @@ cd "/opt/app" || exit
 supercronic -split-logs /etc/supercronic/crontab 1> /proc/1/fd/1 2> /proc/1/fd/2 &
 
 # Set Timezone using Environment
-rm -f "/etc/localtime"
-ln -snf "/usr/share/zoneinfo/${TIMEZONE:-UTC}" "/etc/localtime"
+# Disabled, insufficient Permissions to do that
+# Use this in Quadlet instead e.g.:
+# Timezone=Europe/Berkin
+# rm -f "/etc/localtime"
+# ln -snf "/usr/share/zoneinfo/${TIMEZONE:-UTC}" "/etc/localtime"
 
 # Launch App
 # Just do everything with Supercronic
