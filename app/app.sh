@@ -7,7 +7,8 @@ cd "/opt/app" || exit
 # https://stackoverflow.com/questions/55444469/redirecting-script-output-to-docker-logs
 supercronic -split-logs /etc/supercronic/crontab 1> /proc/1/fd/1 2> /proc/1/fd/2 &
 
-# set timezone using environment
+# Set Timezone using Environment
+rm -f "/etc/localtime"
 ln -snf "/usr/share/zoneinfo/${TIMEZONE:-UTC}" "/etc/localtime"
 
 # Launch App
