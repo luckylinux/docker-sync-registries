@@ -869,13 +869,13 @@ class SyncRegistries:
             # Display List of Images to be synchronized
             display(df_filtered)
 
-        # Iterate Over All Images
+        # Iterate Over All Images that need to be synchronized
         # Move away from Dataframe df_comparison.iterrows():
         for index, row in enumerate(self.current):
             syncStatus = row["Status"]
             if syncStatus != "OK":
                 # Echo
-                print(f"[INFO] {syncStatus} Perform Synchronization for Image {row['SourceFullArtifactReference']}")
+                print(f"[INFO] [{index+1}/{len(self.current)}] {syncStatus} Perform Synchronization for Image {row['SourceFullArtifactReference']}")
 
                 # Perform Sync
                 # In --scoped mode, only the base Destination Domain must be used !
@@ -903,7 +903,7 @@ class SyncRegistries:
 
                 if result_sync.returncode != 0:
                     # text_sync = result_sync.stderr.rsplit("\n")
-                    print(f"[ERROR] {result_sync.stderr}")
+                    print(f"[ERROR] [{index+1}/{len(self.current)}] {result_sync.stderr}")
                 else:
                     # Set the LastUpdate Field to the current Timestamp
                     # df_comparison.loc[index, 'LastUpdate'] = int(datetime.now().timestamp())
