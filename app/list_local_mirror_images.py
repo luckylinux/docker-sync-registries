@@ -8,5 +8,5 @@ if __name__ == "__main__":
     # Initialize Object
     app = SyncRegistries()
 
-    # Run Synchronization
-    app.run_synchronization()
+    # Find Old Images
+    app.find_old_images()
