@@ -315,15 +315,15 @@ class SyncRegistries:
 
                         # If there are any Images defined
                         if currentimages is not None:
-                            for index, im in enumerate(currentimages):
+                            for index_image, im in enumerate(currentimages):
                                 # Debug
                                 if self.config.get("DEBUG_LEVEL") > 3:
-                                    print(f"[DEBUG] [{index+1} / {len(currentimages)}] Processing Image {im} under Registry {registry}")
+                                    print(f"[DEBUG]     [{index_image+1} / {len(currentimages)}] Load Specification for Image {im} under Registry {registry}")
 
                                 # Get Tags associated with the current Image
                                 tags = currentimages[im]
 
-                                for tag in tags:
+                                for index_tag, tag in enumerate(tags):
                                     # Start with the Template Dictionary
                                     # Must use .copy() otherwise all images will point to the LAST image that has been processed !
                                     image = imageTemplate.copy()
@@ -362,7 +362,7 @@ class SyncRegistries:
 
                                     # Debug
                                     if self.config.get("DEBUG_LEVEL") > 3:
-                                        print(f"[DEBUG] Processing Image {fullArtifactReference}: Image {imname} with Tag {tag} from Registry {registry} with Namespace {namespace}")
+                                        print(f"[DEBUG]         [{index_tag+1} / {len(tags)}] Load Full Artifact Reference {fullArtifactReference}: Image {imname} with Tag {tag} from Registry {registry} with Namespace {namespace}")
 
                                     if fullArtifactReference not in self.images_by_source_reference.keys():
                                         # Affect Properties
@@ -487,7 +487,7 @@ class SyncRegistries:
         # Build a faster way to find Items in Database
         for index, item in enumerate(self.database):
             # Debug
-            print(f"[{index+1} / {len(self.database)}] Processing Database Item {item['SourceFullArtifactReference']}")
+            print(f"[{index+1} / {len(self.database)}] Loading Database Item {item['SourceFullArtifactReference']}")
 
             # Get Fully Qualified Artifact Reference
             fullArtifactReference = item.get("SourceFullArtifactReference")
@@ -714,6 +714,16 @@ class SyncRegistries:
 
             # Create Dataframe and add all Images to it
             df_images = pd.DataFrame.from_records(images)
+
+            # Hide some Columns in order to fit properly on Screen
+            df_images = df_images.drop("Registry", axis="columns")
+            df_images = df_images.drop("Namespace", axis="columns")
+            df_images = df_images.drop("Repository", axis="columns")
+            df_images = df_images.drop("ImageName", axis="columns")
+            df_images = df_images.drop("Tag", axis="columns")
+
+            df_images.LastCheck.apply(lambda x: datetime.fromtimestamp(int(x)).strftime('%Y-%m-%d %H:%M:%S'))
+            df_images.LastUpdate.apply(lambda x: datetime.fromtimestamp(int(x)).strftime('%Y-%m-%d %H:%M:%S'))
 
             # Diplay Dataframe
             display(df_images)
