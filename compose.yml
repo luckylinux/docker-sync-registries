@@ -23,6 +23,10 @@ services:
 
       # Testing latest Source Code Version
       - ./app/sync.py:/opt/app/sync.py:ro,z
+
+    tmpfs:
+      - /var/run:rw,size=33554432,mode=1777
+
     restart: "unless-stopped"
     # Needed to redirect log
     privileged: true

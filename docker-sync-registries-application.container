@@ -1,0 +1,49 @@
+[Unit]
+Description=Docker Sync Registries Application Container
+
+[Service]
+Restart=always
+
+[Container]
+ContainerName=docker-sync-registries-application
+
+Pod=docker-sync-registries.pod
+StartWithPod=true
+
+# Set Timezone
+Timezone=Europe/Berlin
+
+Environment=CONFIG_BASE_PATH=/etc/sync-registries.d
+Environment=LOCAL_APPS_RUN_INSIDE_CONTAINER=false
+Environment=ENABLE_INFINITE_LOOP=true
+
+# Synchronize Images every 1 Hour (3600 s)
+Environment=SYNC_INTERVAL=3600
+
+# Synchronize Images every 2 Hours (7200 s)
+# Environment=SYNC_INTERVAL=7200
+
+# Synchronize Images every 6 Hours (21600 s)
+# Environment=SYNC_INTERVAL=21600
+
+# Add a Random Delay
+Environment=SYNC_RANDOM_OFFSET_MAX=3600
+
+EnvironmentFile=.env
+
+Image=localhost/docker-sync-registries:debian-latest
+
+Network=container:docker-sync-registries-caddy
+
+PodmanArgs=--privileged
+
+Pull=missing
+
+Volume=./delete_image_tag.sh:/opt/app/delete_image_tag.sh:ro,z
+Volume=/home/podman/containers/config/docker-sync-registries/application/regctl:/etc/regctl:rw,z
+Volume=/home/podman/containers/config/docker-sync-registries/application/containers:/etc/containers:rw,z
+Volume=/home/podman/containers/config/docker-sync-registries/application/supercronic:/etc/supercronic:ro,z
+Volume=/home/podman/containers/config/docker-sync-registries/application/sync-registries.d:/etc/sync-registries.d:ro,z
+Volume=/home/podman/containers/data/docker-sync-registries/application:/var/lib/sync-registries:rw,z
+
+Tmpfs=/var/run:rw,size=32768k,mode=1777
