@@ -731,11 +731,11 @@ class SyncRegistries:
             df_images = pd.DataFrame.from_records(images)
 
             # Hide some Columns in order to fit properly on Screen
-            df_images = df_images.drop("Registry", axis="columns")
-            df_images = df_images.drop("Namespace", axis="columns")
-            df_images = df_images.drop("Repository", axis="columns")
-            df_images = df_images.drop("ImageName", axis="columns")
-            df_images = df_images.drop("Tag", axis="columns")
+            df_images.drop("Registry", axis="columns", inplace=True)
+            df_images.drop("Namespace", axis="columns", inplace=True)
+            df_images.drop("Repository", axis="columns", inplace=True)
+            df_images.drop("ImageName", axis="columns", inplace=True)
+            df_images.drop("Tag", axis="columns", inplace=True)
 
             # Format UNIX Timestamp as String
             df_images.LastCheck.apply(lambda x: unixtimestamp_to_str(x))
