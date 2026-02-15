@@ -731,11 +731,11 @@ class SyncRegistries:
             df_images = pd.DataFrame.from_records(images)
 
             # Hide some Columns in order to fit properly on Screen
-            df_images.drop("Registry", axis="columns", inplace=True)
-            df_images.drop("Namespace", axis="columns", inplace=True)
-            df_images.drop("Repository", axis="columns", inplace=True)
-            df_images.drop("ImageName", axis="columns", inplace=True)
-            df_images.drop("Tag", axis="columns", inplace=True)
+            df_images.drop("Registry", axis=1, inplace=True)
+            df_images.drop("Namespace", axis=1, inplace=True)
+            df_images.drop("Repository", axis=1, inplace=True)
+            df_images.drop("ImageName", axis=1, inplace=True)
+            df_images.drop("Tag", axis=1, inplace=True)
 
             # Format UNIX Timestamp as String
             df_images.LastCheck.apply(lambda x: unixtimestamp_to_str(x))
@@ -856,6 +856,15 @@ class SyncRegistries:
         if self.config.get("DEBUG_LEVEL") > 3:
             # Create Dataframe and add all Images to it
             df_comparison = pd.DataFrame.from_records(comparison)
+
+            # Hide some Columns in order to fit properly on Screen
+            df_comparison.drop("SourceShortArtifactReference", axis=1, inplace=True)
+            df_comparison.drop("SourceHash", axis=1, inplace=True)
+            df_comparison.drop("DestinationHash", axis=1, inplace=True)
+
+            # Format UNIX Timestamp as String
+            df_comparison.LastCheck.apply(lambda x: unixtimestamp_to_str(x))
+            df_comparison.LastUpdate.apply(lambda x: unixtimestamp_to_str(x))
 
             # Display Comparison
             print("Overall Comparison:")
