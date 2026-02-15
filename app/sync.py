@@ -115,6 +115,21 @@ def strip_quotes(text):
     return result
 
 
+# Convert UNIX Timestamp to Date String if valid, otherwise return NaN
+def unixtimestamp_to_str(unix_ts: int | Any) -> str:
+    # Declare Variable
+    date_str = ""
+
+    # Attempt to perform Conversion
+    try:
+        date_str = datetime.fromtimestamp(int(unix_ts)).strftime('%Y-%m-%d %H:%M:%S')
+    except Exception as e:
+        date_str = "NaN"
+
+    # Return Value
+    return date_str
+
+
 class ConfigurationManager:
     # Class Constructor
     def __init__(self,
@@ -722,8 +737,9 @@ class SyncRegistries:
             df_images = df_images.drop("ImageName", axis="columns")
             df_images = df_images.drop("Tag", axis="columns")
 
-            df_images.LastCheck.apply(lambda x: datetime.fromtimestamp(int(x)).strftime('%Y-%m-%d %H:%M:%S'))
-            df_images.LastUpdate.apply(lambda x: datetime.fromtimestamp(int(x)).strftime('%Y-%m-%d %H:%M:%S'))
+            # Format UNIX Timestamp as String
+            df_images.LastCheck.apply(lambda x: unixtimestamp_to_str(x))
+            df_images.LastUpdate.apply(lambda x: unixtimestamp_to_str(x))
 
             # Diplay Dataframe
             display(df_images)
