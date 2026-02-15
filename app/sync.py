@@ -732,6 +732,9 @@ class SyncRegistries:
 
             # Hide some Columns in order to fit properly on Screen
             df_images.drop("Registry", axis=1, inplace=True)
+            df_images.drop("SourceShortArtifactReference", axis=1, inplace=True)
+            df_images.drop("SourceHash", axis=1, inplace=True)
+            df_images.drop("DestinationHash", axis=1, inplace=True)
             df_images.drop("Namespace", axis=1, inplace=True)
             df_images.drop("Repository", axis=1, inplace=True)
             df_images.drop("ImageName", axis=1, inplace=True)
