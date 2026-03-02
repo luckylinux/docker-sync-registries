@@ -10,6 +10,9 @@ ContainerName=docker-sync-registries-application
 Pod=docker-sync-registries.pod
 StartWithPod=true
 
+# Load General Settings
+EnvironmentFile=.env
+
 # Set Timezone
 Timezone=Europe/Berlin
 
@@ -29,15 +32,17 @@ Environment=SYNC_INTERVAL=3600
 # Add a Random Delay
 Environment=SYNC_RANDOM_OFFSET_MAX=3600
 
-EnvironmentFile=.env
+# Make Sure that Regctl loads the configuration
+Environment=REGCTL_CONFIG=/etc/regctl/config.json
 
+# Image
 Image=localhost/docker-sync-registries:debian-latest
+Pull=missing
 
 Network=container:docker-sync-registries-caddy
 
 PodmanArgs=--privileged
 
-Pull=missing
 
 Volume=./delete_image_tag.sh:/opt/app/delete_image_tag.sh:ro,z
 Volume=/home/podman/containers/config/docker-sync-registries/application/regctl:/etc/regctl:rw,z

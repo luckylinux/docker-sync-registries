@@ -14,6 +14,7 @@ services:
       - "ENABLE_INFINITE_LOOP=true"
       - "SYNC_INTERVAL=1800"
       # - "DEBUG_LIST_PARSED_CONFIG=true"
+      - "REGCTL_CONFIG=/etc/regctl/config.json"
     volumes:
       - ./regctl:/etc/regctl:rw,z
       - ./containers:/etc/containers:rw,z
