@@ -35,6 +35,9 @@ Environment=SYNC_RANDOM_OFFSET_MAX=3600
 # Make Sure that Regctl loads the configuration
 Environment=REGCTL_CONFIG=/etc/regctl/config.json
 
+# Enable Docker Hub Mirror using mirror.gcr.io
+Environment=ENABLE_DOCKER_HUB_MIRROR=true
+
 # Image
 Image=localhost/docker-sync-registries:debian-latest
 Pull=missing

@@ -1,5 +1,7 @@
 # docker-sync-registries
-A tool to sync Docker/Podman Images Registries using skopeo without incurring in Dockerhub Ratelimit Error
+A tool to sync Docker/Podman Images Registries using `skopeo` without incurring in Docker Hub Ratelimit Error.
+
+Latest Version includes support for using `mirror.gcr.io` instead of `docker.io` if Manifest Digest sha256 Value Matches.
 
 # Setup
 ```

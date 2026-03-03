@@ -28,7 +28,8 @@ from IPython.display import display
 
 # Subprocess Python Module
 # from subprocess import Popen, PIPE, run
-from subprocess import PIPE, run, CompletedProcess
+# from subprocess import PIPE, run, CompletedProcess
+import subprocess
 
 # Datetime Module
 from datetime import datetime
@@ -92,6 +93,9 @@ CONFIG_KEYS = [
 
                # SYNC_RANDOM_OFFSET_MAX
                "SYNC_RANDOM_OFFSET_MAX",
+
+               # ENABLE_DOCKER_HUB_MIRROR
+               "ENABLE_DOCKER_HUB_MIRROR",
 ]
 
 
@@ -246,6 +250,9 @@ class SyncRegistries:
 
         # Set Default SYNC_RANDOM_OFFSET_MAX
         self.config.set_if_not_set(key="SYNC_RANDOM_OFFSET_MAX", default_value=int(self.config.get("SYNC_INTERVAL")/1))
+
+        # By Default enable Docker Hub Mirror
+        self.config.set_if_not_set(key="ENABLE_DOCKER_HUB_MIRROR", default_value=True)
 
         # Set Pandas DataFrame Display Properties
         pd.options.display.max_columns = 99999
@@ -696,17 +703,17 @@ class SyncRegistries:
     # Get Manifest Hash
     def get_manifest_hash(self,
                           full_artifact_reference: str
-                          ) -> (str, CompletedProcess, int):
+                          ) -> (str, subprocess.CompletedProcess, int):
 
         command = COMMAND_REGCTL.copy()
         command.extend(["manifest", "head", full_artifact_reference])
 
-        result = run(command,
-                     stdout=PIPE,
-                     stderr=PIPE,
-                     universal_newlines=True,
-                     text=True
-                     )
+        result = subprocess.run(command,
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE,
+                                universal_newlines=True,
+                                text=True
+                                )
 
         # Get Command Output
         text = result.stdout.rsplit("\n")
@@ -895,6 +902,42 @@ class SyncRegistries:
             # Return None
             return None
 
+    # Sync Image
+    def sync_image(self,
+                   source_full_artifact_reference: str,
+                   destination_full_artifact_reference: str
+                   ) -> subprocess.CompletedProcess:
+
+        # Define Destination Artifact Reference for use with Skopeo requires removing the actual Image Name and Tag, while only keeping the Registry + Repository
+        destination_artifact_parts = destination_full_artifact_reference.split("/")
+        destination_artifact_skopeo = "/".join(destination_artifact_parts[0:-1])
+
+        # In --scoped mode, only the base Destination Domain must be used !
+        # This is equal to CONFIG["DESTINATION_REGISTRY_HOSTNAME"]
+        command_sync = COMMAND_SKOPEO.copy()
+        command_sync.extend(
+                            [
+                                "sync",
+                                "--src",
+                                "docker",
+                                "--dest",
+                                "docker",
+                                "--all",
+                                "--preserve-digests",
+                                source_full_artifact_reference,
+                                destination_artifact_skopeo
+                            ]
+                            )
+        result_sync = subprocess.run(command_sync,
+                                     stdout=subprocess.PIPE,
+                                     stderr=subprocess.PIPE,
+                                     universal_newlines=True,
+                                     text=True
+                                     )
+
+        # Return Result
+        return result_sync
+
     # Synchronize Images based on Manifest Digest Comparison
     # This will synchronize ALL Architectures / Platforms
     def sync_images_based_on_manifest_digest(self):
@@ -918,36 +961,63 @@ class SyncRegistries:
         for index, row in enumerate(self.current):
             syncStatus = row["Status"]
             if syncStatus != "OK":
+                # Define Source Full Artifact Reference
+                original_source_full_artifact_reference = str(row['SourceFullArtifactReference'])
+                source_full_artifact_reference = original_source_full_artifact_reference
+
+                # Define Destination Artifact Reference for use with Skopeo requires removing the actual Image Name and Tag, while only keeping the Registry + Repository
+                destination_full_artifact_reference = str(row['DestinationFullArtifactReference'])
+                # destination_artifact_parts = str(row['DestinationFullArtifactReference']).split("/")
+                # destination_artifact_skopeo = "/".join(destination_artifact_parts[0:-1])
+
+                # Define Source Hash
+                source_hash = str(row['SourceHash'])
+
                 # Echo
-                print(f"[INFO] [{index+1}/{len(self.current)}] {syncStatus} Perform Synchronization for Image {row['SourceFullArtifactReference']}")
+                print(f"[INFO] [{index+1}/{len(self.current)}] {syncStatus} Perform Synchronization for Image {source_full_artifact_reference}")
+
+                if self.config.get("ENABLE_DOCKER_HUB_MIRROR"):
+                    # For docker.io, try to see if the Manifest Digest is the same on mirror.gcr.io, since there is no Rate Limit there
+                    if str(row['SourceFullArtifactReference']).startswith("docker.io"):
+                        # Echo
+                        print(f"[INFO] [{index+1}/{len(self.current)}] Check if {source_full_artifact_reference} can be downloaded from mirror.gcr.io")
+
+                        # Mirror Full Artifact Reference
+                        mirror_full_artifact_reference = source_full_artifact_reference.replace("docker.io", "mirror.gcr.io")
+
+                        # Query the Mirror Repository
+                        mirror_hash, mirror_result, mirror_retcode = self.get_manifest_hash(full_artifact_reference=mirror_full_artifact_reference)
+
+                        # If Image could be found on the Mirror
+                        if (mirror_retcode == 0):
+                            # If Hashes are the same, switch over to mirror.gcr.io, otherwise leave it as it is
+                            if mirror_hash == source_hash:
+                                # Update Source
+                                source_full_artifact_reference = mirror_full_artifact_reference
+
+                                # Echo
+                                print(f"[INFO] [{index+1}/{len(self.current)}] Image Hash matches. Image {original_source_full_artifact_reference} will be downloaded from {source_full_artifact_reference} using mirror.gcr.io instead.")
+                                print(f"[INFO] [{index+1}/{len(self.current)}] Image {original_source_full_artifact_reference} will be synced to {destination_full_artifact_reference}.")
 
                 # Perform Sync
-                # In --scoped mode, only the base Destination Domain must be used !
-                # This is equal to CONFIG["DESTINATION_REGISTRY_HOSTNAME"]
-                command_sync = COMMAND_SKOPEO.copy()
-                command_sync.extend(
-                                    [
-                                        "sync",
-                                        "--scoped",
-                                        "--src",
-                                        "docker",
-                                        "--dest",
-                                        "docker",
-                                        "--all",
-                                        row["SourceFullArtifactReference"],
-                                        self.config.get("DESTINATION_REGISTRY_HOSTNAME")
-                                    ]
-                                    )
-                result_sync = run(command_sync,
-                                  stdout=PIPE,
-                                  stderr=PIPE,
-                                  universal_newlines=True,
-                                  text=True
-                                  )
+                result_sync = self.sync_image(source_full_artifact_reference=source_full_artifact_reference,
+                                              destination_full_artifact_reference=destination_full_artifact_reference
+                                              )
 
                 if result_sync.returncode != 0:
                     # text_sync = result_sync.stderr.rsplit("\n")
                     print(f"[ERROR] [{index+1}/{len(self.current)}] {result_sync.stderr}")
+
+                    # If we were using mirror.gcr.io, it's possible that will not work, since --preserve-manifest seems to fail on some Repositories
+                    # Try again by pulling the original docker.io Image
+                    if original_source_full_artifact_reference != source_full_artifact_reference:
+                        # Echo
+                        print(f"[INFO] [{index+1}/{len(self.current)}] Try to download Image {original_source_full_artifact_reference} directly without using Mirror.")
+                        print(f"[INFO] [{index+1}/{len(self.current)}] Image {original_source_full_artifact_reference} will be synced to {destination_full_artifact_reference}.")
+
+                        result_sync = self.sync_image(source_full_artifact_reference=original_source_full_artifact_reference,
+                                                      destination_full_artifact_reference=destination_full_artifact_reference
+                                                      )
                 else:
                     # Set the LastUpdate Field to the current Timestamp
                     # df_comparison.loc[index, 'LastUpdate'] = int(datetime.now().timestamp())
@@ -1001,7 +1071,7 @@ class SyncRegistries:
     # Regctl Command
     def regctl(self,
                *args
-               ) -> CompletedProcess:
+               ) -> subprocess.CompletedProcess:
 
         # Define Command
         command = self.format_command(COMMAND_REGCTL.copy(), *args)
@@ -1009,12 +1079,12 @@ class SyncRegistries:
         # Debug
         # print(f"Command: {command}")
 
-        result = run(command,
-                     stdout=PIPE,
-                     stderr=PIPE,
-                     universal_newlines=True,
-                     text=True
-                     )
+        result = subprocess.run(command,
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE,
+                                universal_newlines=True,
+                                text=True
+                                )
 
         output = result.stdout
 
@@ -1025,7 +1095,7 @@ class SyncRegistries:
     def get_repositories(self,
                          registry: str,
                          limit: int = 1000
-                         ) -> CompletedProcess:
+                         ) -> subprocess.CompletedProcess:
 
         # Perform Command
         result = self.regctl("repo",
@@ -1046,7 +1116,7 @@ class SyncRegistries:
                  registry: str,
                  repository: str,
                  limit: int = 1000
-                 ) -> CompletedProcess:
+                 ) -> subprocess.CompletedProcess:
 
         # Perform Command
         result = self.regctl("tag",

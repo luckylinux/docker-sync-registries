@@ -12,9 +12,26 @@ services:
       - "CONFIG_BASE_PATH=/etc/sync-registries.d"
       - "LOCAL_APPS_RUN_INSIDE_CONTAINER=false"
       - "ENABLE_INFINITE_LOOP=true"
-      - "SYNC_INTERVAL=1800"
       # - "DEBUG_LIST_PARSED_CONFIG=true"
+
+      # Synchronize Images every 1 Hour (3600 s)
+      - "SYNC_INTERVAL=3600"
+
+      # Synchronize Images every 2 Hours (7200 s)
+      # - "SYNC_INTERVAL=7200"
+
+      # Synchronize Images every 6 Hours (21600 s)
+      # - "SYNC_INTERVAL=21600"
+
+      # Add a Random Delay
+      - "SYNC_RANDOM_OFFSET_MAX=3600"
+
+      # Make Sure that Regctl loads the configuration
       - "REGCTL_CONFIG=/etc/regctl/config.json"
+
+      # Enable Docker Hub Mirror using mirror.gcr.io
+      - "ENABLE_DOCKER_HUB_MIRROR=true"
+
     volumes:
       - ./regctl:/etc/regctl:rw,z
       - ./containers:/etc/containers:rw,z
