@@ -840,7 +840,7 @@ class SyncRegistries:
                             syncStatus = "ERROR_RETRIEVING_MANIFEST_FROM_BOTH"
 
                 if syncStatus != "OK":
-                    print(f"[INFO] [{index+1} / {len(images)}] Check if Image {sourcefullartifactreference} has an updated Image available")
+                    print(f"[INFO] [{index+1} / {len(images)}] Image {sourcefullartifactreference} has an updated Image available. Register Image in Synchronization List.")
             else:
                 # Debug
                 if self.config.get("DEBUG_LEVEL") > 3:
