@@ -94,6 +94,7 @@ CONFIG_KEYS = [
                # Define which Synchronization Tool to use
                # Options are:
                # - "skopeo" (default)
+               # - "regctl"
                # - "crane"
                "SYNC_TOOL",
 
@@ -962,6 +963,27 @@ class SyncRegistries:
             # Debug
             if self.config.get("DEBUG_LEVEL") > 3:
                 print("[DEBUG] Perform Synchronization using Crane")
+                print("[DEBUG] Run Command: {' '.join(command_sync)}")
+
+        elif sync_tool == "regctl":
+            # These additional Options might be required in some Cases
+            # "--include-external",
+            # "--referrers",
+            # "--force-recursive",
+
+            command_sync = COMMAND_REGCTL.copy()
+            command_sync.extend(
+                                [
+                                    "image",
+                                    "copy",
+                                    source_full_artifact_reference,
+                                    destination_full_artifact_reference
+                                ]
+                                )
+
+            # Debug
+            if self.config.get("DEBUG_LEVEL") > 3:
+                print("[DEBUG] Perform Synchronization using Regctl")
                 print("[DEBUG] Run Command: {' '.join(command_sync)}")
 
         else:

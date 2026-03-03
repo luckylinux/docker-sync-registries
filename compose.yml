@@ -17,6 +17,7 @@ services:
       # Define which Synchronization Tool to use
       # Options are:
       # - "skopeo" (default)
+      # - "regctl"
       # - "crane"
       - "SYNC_TOOL=skopeo"
 

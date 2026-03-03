@@ -23,6 +23,7 @@ Environment=ENABLE_INFINITE_LOOP=true
 # Define which Synchronization Tool to use
 # Options are:
 # - "skopeo" (default)
+# - "regctl"
 # - "crane"
 Environment=SYNC_TOOL=skopeo
 
