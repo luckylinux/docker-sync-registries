@@ -11,6 +11,9 @@ import pandas as pd
 # OS Library
 import os
 
+# sys Library
+import sys
+
 # Pprint Library
 # import pprint
 
@@ -917,7 +920,10 @@ class SyncRegistries:
                    destination_full_artifact_reference: str
                    ) -> subprocess.CompletedProcess:
 
-        if self.config.get("SYNC_TOOL") == "skopeo":
+        # Get SYNC_TOOL
+        sync_tool = self.config.get("SYNC_TOOL")
+
+        if sync_tool == "skopeo":
             # Define Destination Artifact Reference for use with Skopeo requires removing the actual Image Name and Tag, while only keeping the Registry + Repository
             destination_artifact_parts = destination_full_artifact_reference.split("/")
             destination_artifact_skopeo = "/".join(destination_artifact_parts[0:-1])
@@ -938,7 +944,7 @@ class SyncRegistries:
                                     destination_artifact_skopeo
                                 ]
                                 )
-        elif self.config.get("SYNC_TOOL") == "crane":
+        elif sync_tool == "crane":
             command_sync = COMMAND_CRANE.copy()
             command_sync.extend(
                                 [
@@ -947,6 +953,11 @@ class SyncRegistries:
                                     destination_full_artifact_reference
                                 ]
                                 )
+
+        else:
+            # Print Error
+            print(f"[ERROR] Invalid Setting for SYNC_TOOL: {sync_tool}")
+            sys.exit(1)
 
         result_sync = subprocess.run(command_sync,
                                      stdout=subprocess.PIPE,
