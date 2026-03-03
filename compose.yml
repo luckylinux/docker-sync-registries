@@ -14,6 +14,12 @@ services:
       - "ENABLE_INFINITE_LOOP=true"
       # - "DEBUG_LIST_PARSED_CONFIG=true"
 
+      # Define which Synchronization Tool to use
+      # Options are:
+      # - "skopeo" (default)
+      # - "crane"
+      - "SYNC_TOOL=skopeo"
+
       # Synchronize Images every 1 Hour (3600 s)
       - "SYNC_INTERVAL=3600"
 

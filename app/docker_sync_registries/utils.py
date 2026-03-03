@@ -88,6 +88,12 @@ CONFIG_KEYS = [
                "DEBUG_LEVEL",
                # "DEBUG_LIST_PARSED_CONFIG",
 
+               # Define which Synchronization Tool to use
+               # Options are:
+               # - "skopeo" (default)
+               # - "crane"
+               "SYNC_TOOL",
+
                # SYNC INTERVAL
                "SYNC_INTERVAL",
 
@@ -253,6 +259,9 @@ class SyncRegistries:
 
         # By Default enable Docker Hub Mirror
         self.config.set_if_not_set(key="ENABLE_DOCKER_HUB_MIRROR", default_value=True)
+
+        # By Default use Skopeo to synchronize Images
+        self.config.set_if_not_set(key="SYNC_TOOL", default_value="skopeo")
 
         # Set Pandas DataFrame Display Properties
         pd.options.display.max_columns = 99999
@@ -908,26 +917,37 @@ class SyncRegistries:
                    destination_full_artifact_reference: str
                    ) -> subprocess.CompletedProcess:
 
-        # Define Destination Artifact Reference for use with Skopeo requires removing the actual Image Name and Tag, while only keeping the Registry + Repository
-        destination_artifact_parts = destination_full_artifact_reference.split("/")
-        destination_artifact_skopeo = "/".join(destination_artifact_parts[0:-1])
+        if self.config.get("SYNC_TOOL") == "skopeo":
+            # Define Destination Artifact Reference for use with Skopeo requires removing the actual Image Name and Tag, while only keeping the Registry + Repository
+            destination_artifact_parts = destination_full_artifact_reference.split("/")
+            destination_artifact_skopeo = "/".join(destination_artifact_parts[0:-1])
 
-        # In --scoped mode, only the base Destination Domain must be used !
-        # This is equal to CONFIG["DESTINATION_REGISTRY_HOSTNAME"]
-        command_sync = COMMAND_SKOPEO.copy()
-        command_sync.extend(
-                            [
-                                "sync",
-                                "--src",
-                                "docker",
-                                "--dest",
-                                "docker",
-                                "--all",
-                                "--preserve-digests",
-                                source_full_artifact_reference,
-                                destination_artifact_skopeo
-                            ]
-                            )
+            # In --scoped mode, only the base Destination Domain must be used !
+            # This is equal to CONFIG["DESTINATION_REGISTRY_HOSTNAME"]
+            command_sync = COMMAND_SKOPEO.copy()
+            command_sync.extend(
+                                [
+                                    "sync",
+                                    "--src",
+                                    "docker",
+                                    "--dest",
+                                    "docker",
+                                    "--all",
+                                    "--preserve-digests",
+                                    source_full_artifact_reference,
+                                    destination_artifact_skopeo
+                                ]
+                                )
+        elif self.config.get("SYNC_TOOL") == "skopeo":
+            command_sync = COMMAND_CRANE.copy()
+            command_sync.extend(
+                                [
+                                    "copy",
+                                    source_full_artifact_reference,
+                                    destination_full_artifact_reference
+                                ]
+                                )
+
         result_sync = subprocess.run(command_sync,
                                      stdout=subprocess.PIPE,
                                      stderr=subprocess.PIPE,
