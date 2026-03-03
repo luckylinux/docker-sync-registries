@@ -109,6 +109,16 @@ CONFIG_KEYS = [
 ]
 
 
+# Auxiliary Function to drop Column from Dataframe if it exists
+def pandas_drop_column_from_dataframe(df: pd.DataFrame,
+                                      column_name: str,
+                                      axis: int = 1,
+                                      inplace: bool = True
+                                      ) -> None:
+    if column_name in df.columns:
+        df.drop(column_name, axis=axis, inplace=inplace)
+
+
 # Remove Quotes
 def strip_quotes(text):
     # Declare result variable
@@ -737,6 +747,8 @@ class SyncRegistries:
         # Return Result
         return (hash_value, result, result.returncode)
 
+    
+
     # Scan Images Manifest Digest and Compare Source with Destination
     def scan_images_manifest_digest(self,
                                     images: list[dict[str, Any]]
@@ -752,14 +764,14 @@ class SyncRegistries:
 
             if df_images.empty is False:
                 # Hide some Columns in order to fit properly on Screen
-                df_images.drop("Registry", axis=1, inplace=True)
-                df_images.drop("SourceShortArtifactReference", axis=1, inplace=True)
-                df_images.drop("SourceHash", axis=1, inplace=True)
-                df_images.drop("DestinationHash", axis=1, inplace=True)
-                df_images.drop("Namespace", axis=1, inplace=True)
-                df_images.drop("Repository", axis=1, inplace=True)
-                df_images.drop("ImageName", axis=1, inplace=True)
-                df_images.drop("Tag", axis=1, inplace=True)
+                pandas_drop_column_from_dataframe(df_images, column_name="Registry")
+                pandas_drop_column_from_dataframe(df_images, column_name="SourceShortArtifactReference")
+                pandas_drop_column_from_dataframe(df_images, column_name="SourceHash")
+                pandas_drop_column_from_dataframe(df_images, column_name="DestinationHash")
+                pandas_drop_column_from_dataframe(df_images, column_name="Namespace")
+                pandas_drop_column_from_dataframe(df_images, column_name="Repository")
+                pandas_drop_column_from_dataframe(df_images, column_name="ImageName")
+                pandas_drop_column_from_dataframe(df_images, column_name="Tag")
 
                 # Format UNIX Timestamp as String
                 df_images.LastCheck.apply(lambda x: unixtimestamp_to_str(x))
@@ -886,9 +898,9 @@ class SyncRegistries:
 
             if df_comparison.empty is False:
                 # Hide some Columns in order to fit properly on Screen
-                df_comparison.drop("SourceShortArtifactReference", axis=1, inplace=True)
-                df_comparison.drop("SourceHash", axis=1, inplace=True)
-                df_comparison.drop("DestinationHash", axis=1, inplace=True)
+                pandas_drop_column_from_dataframe(df_comparison, column_name="SourceShortArtifactReference")
+                pandas_drop_column_from_dataframe(df_comparison, column_name="SourceHash")
+                pandas_drop_column_from_dataframe(df_comparison, column_name="DestinationHash")
 
                 # Format UNIX Timestamp as String
                 df_comparison.LastCheck.apply(lambda x: unixtimestamp_to_str(x))
