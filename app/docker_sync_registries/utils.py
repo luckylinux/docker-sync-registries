@@ -938,7 +938,7 @@ class SyncRegistries:
                                     destination_artifact_skopeo
                                 ]
                                 )
-        elif self.config.get("SYNC_TOOL") == "skopeo":
+        elif self.config.get("SYNC_TOOL") == "crane":
             command_sync = COMMAND_CRANE.copy()
             command_sync.extend(
                                 [
