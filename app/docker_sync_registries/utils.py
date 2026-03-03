@@ -750,22 +750,23 @@ class SyncRegistries:
             # Create Dataframe and add all Images to it
             df_images = pd.DataFrame.from_records(images)
 
-            # Hide some Columns in order to fit properly on Screen
-            df_images.drop("Registry", axis=1, inplace=True)
-            df_images.drop("SourceShortArtifactReference", axis=1, inplace=True)
-            df_images.drop("SourceHash", axis=1, inplace=True)
-            df_images.drop("DestinationHash", axis=1, inplace=True)
-            df_images.drop("Namespace", axis=1, inplace=True)
-            df_images.drop("Repository", axis=1, inplace=True)
-            df_images.drop("ImageName", axis=1, inplace=True)
-            df_images.drop("Tag", axis=1, inplace=True)
+            if df_images.empty is False:
+                # Hide some Columns in order to fit properly on Screen
+                df_images.drop("Registry", axis=1, inplace=True)
+                df_images.drop("SourceShortArtifactReference", axis=1, inplace=True)
+                df_images.drop("SourceHash", axis=1, inplace=True)
+                df_images.drop("DestinationHash", axis=1, inplace=True)
+                df_images.drop("Namespace", axis=1, inplace=True)
+                df_images.drop("Repository", axis=1, inplace=True)
+                df_images.drop("ImageName", axis=1, inplace=True)
+                df_images.drop("Tag", axis=1, inplace=True)
 
-            # Format UNIX Timestamp as String
-            df_images.LastCheck.apply(lambda x: unixtimestamp_to_str(x))
-            df_images.LastUpdate.apply(lambda x: unixtimestamp_to_str(x))
+                # Format UNIX Timestamp as String
+                df_images.LastCheck.apply(lambda x: unixtimestamp_to_str(x))
+                df_images.LastUpdate.apply(lambda x: unixtimestamp_to_str(x))
 
-            # Diplay Dataframe
-            display(df_images)
+                # Diplay Dataframe
+                display(df_images)
 
         # Define Manifest Digest Hashes
         comparison = []
@@ -883,18 +884,19 @@ class SyncRegistries:
             # Create Dataframe and add all Images to it
             df_comparison = pd.DataFrame.from_records(comparison)
 
-            # Hide some Columns in order to fit properly on Screen
-            df_comparison.drop("SourceShortArtifactReference", axis=1, inplace=True)
-            df_comparison.drop("SourceHash", axis=1, inplace=True)
-            df_comparison.drop("DestinationHash", axis=1, inplace=True)
+            if df_comparison.empty is False:
+                # Hide some Columns in order to fit properly on Screen
+                df_comparison.drop("SourceShortArtifactReference", axis=1, inplace=True)
+                df_comparison.drop("SourceHash", axis=1, inplace=True)
+                df_comparison.drop("DestinationHash", axis=1, inplace=True)
 
-            # Format UNIX Timestamp as String
-            df_comparison.LastCheck.apply(lambda x: unixtimestamp_to_str(x))
-            df_comparison.LastUpdate.apply(lambda x: unixtimestamp_to_str(x))
+                # Format UNIX Timestamp as String
+                df_comparison.LastCheck.apply(lambda x: unixtimestamp_to_str(x))
+                df_comparison.LastUpdate.apply(lambda x: unixtimestamp_to_str(x))
 
-            # Display Comparison
-            print("[DEBUG] Overall Comparison:")
-            print(df_comparison)
+                # Display Comparison
+                print("[DEBUG] Overall Comparison:")
+                print(df_comparison)
 
         # Return Result
         return comparison
@@ -1010,11 +1012,12 @@ class SyncRegistries:
             # Create Dataframe from current Data
             df_debug = pd.DataFrame.from_records(self.current)
 
-            # Filter Dataframe
-            df_filtered = df_debug[df_debug["Status"] != "OK"]
+            if df_debug.empty is False:
+                # Filter Dataframe
+                df_filtered = df_debug[df_debug["Status"] != "OK"]
 
-            # Display List of Images to be synchronized
-            display(df_filtered)
+                # Display List of Images to be synchronized
+                display(df_filtered)
 
         # Echo
         print("[INFO] Run Synchronization for Images that require it")
