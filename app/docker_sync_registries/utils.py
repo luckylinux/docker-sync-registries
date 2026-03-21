@@ -963,7 +963,7 @@ class SyncRegistries:
             # Debug
             if self.config.get("DEBUG_LEVEL") > 3:
                 print("[DEBUG] Perform Synchronization using Skopeo")
-                print("[DEBUG] Run Command: {' '.join(command_sync)}")
+                print(f"[DEBUG] Run Command: {' '.join(command_sync)}")
         elif sync_tool == "crane":
             command_sync = COMMAND_CRANE.copy()
             command_sync.extend(
@@ -977,7 +977,7 @@ class SyncRegistries:
             # Debug
             if self.config.get("DEBUG_LEVEL") > 3:
                 print("[DEBUG] Perform Synchronization using Crane")
-                print("[DEBUG] Run Command: {' '.join(command_sync)}")
+                print(f"[DEBUG] Run Command: {' '.join(command_sync)}")
 
         elif sync_tool == "regctl":
             # These additional Options might be required in some Cases
@@ -998,7 +998,7 @@ class SyncRegistries:
             # Debug
             if self.config.get("DEBUG_LEVEL") > 3:
                 print("[DEBUG] Perform Synchronization using Regctl")
-                print("[DEBUG] Run Command: {' '.join(command_sync)}")
+                print(f"[DEBUG] Run Command: {' '.join(command_sync)}")
 
         else:
             # Print Error
